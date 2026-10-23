@@ -1,0 +1,42 @@
+[project]
+name = "costlayer"
+version = "0.1.0"
+description = "Agent cost layer experiment on tau-bench"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=0.70",
+    "pydantic>=2",
+    "litellm>=1.41",
+    "numpy>=1.26",
+    "tau-bench",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
+
+[tool.uv.sources]
+# Pinned commit of sierra-research/tau-bench (MIT license).
+tau-bench = { git = "https://github.com/sierra-research/tau-bench", rev = "59a200c6d575d595120f1cb70fea53cef0632f6b" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["costlayer"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[project.scripts]
+costlayer = "costlayer.cli:main"
