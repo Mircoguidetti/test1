@@ -31,3 +31,22 @@ def savings_ci(
     rng = random.Random(seed)
     boots = sorted(ratio([rng.randrange(n) for _ in range(n)]) for _ in range(iters))
     return point, boots[int(0.025 * iters)], boots[int(0.975 * iters) - 1]
+
+
+def ratio_ci(
+    base: list[float], other: list[float], level: float = 0.8, iters: int = 10_000, seed: int = 7
+) -> tuple[float, float, float]:
+    """Cost ratio sum(other)/sum(base) over paired tasks, with a bootstrap interval over tasks."""
+    assert len(base) == len(other) and base
+    n = len(base)
+
+    def ratio(idx: list[int]) -> float:
+        b = sum(base[i] for i in idx)
+        return sum(other[i] for i in idx) / b if b else float("nan")
+
+    point = ratio(list(range(n)))
+    rng = random.Random(seed)
+    boots = sorted(ratio([rng.randrange(n) for _ in range(n)]) for _ in range(iters))
+    lo = boots[int((1 - level) / 2 * iters)]
+    hi = boots[min(iters - 1, int((1 + level) / 2 * iters) - 1)]
+    return point, lo, hi
