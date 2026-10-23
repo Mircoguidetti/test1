@@ -6,17 +6,16 @@ requires-python = ">=3.12"
 dependencies = [
     "anthropic>=0.70",
     "pydantic>=2",
-    "litellm>=1.41",
-    "numpy>=1.26",
-    "tau-bench",
+    "tau2",
+    "audioop-lts>=0.2; python_version >= '3.13'",  # tau2 imports audioop, removed in 3.13
 ]
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
 
 [tool.uv.sources]
-# Pinned commit of sierra-research/tau-bench (MIT license).
-tau-bench = { git = "https://github.com/sierra-research/tau-bench", rev = "59a200c6d575d595120f1cb70fea53cef0632f6b" }
+# tau2-bench (tau^3-bench v1.0.0, MIT license), pinned commit.
+tau2 = { git = "https://github.com/sierra-research/tau2-bench", rev = "cc1df47baa1544a34bb8c8e5c4ca72ad223b96a2" }
 
 [build-system]
 requires = ["hatchling"]
