@@ -7,7 +7,7 @@ from costlayer.client import AnthropicClient
 from costlayer.context import RunContext
 from costlayer.ledger import BudgetExceeded, Ledger
 from costlayer.pricing import HAIKU, SONNET
-from costlayer.runner import Runner, split_tasks, tool_kinds
+from costlayer.runner import Runner, run_name, split_tasks, tool_kinds
 from costlayer.sanitize import find_banned, sanitize_simulation
 from costlayer.usersim import USER_LLM, install, usage_from_raw
 from tests.fakes import FakeSDK, StatusError, fake_user_backend, text, thinking
@@ -93,7 +93,7 @@ def test_infra_error_is_rerun_once_and_counted(tmp_path):
     assert len(res) == 1 and res[0]["attempt"] == 2 and res[0]["status"] == "ok"
     attempts = {json.loads(x)["attempt"] for x in led.path.read_text().splitlines()}
     assert attempts == {1, 2}
-    assert (tmp_path / "out" / "runs" / f"default__{res[0]['task']}__a1.json").exists()
+    assert (tmp_path / "out" / "runs" / run_name(SONNET, "default", res[0]["task"], 1)).exists()
 
 
 def test_two_infra_errors_leave_the_run_marked_for_dropping(tmp_path):

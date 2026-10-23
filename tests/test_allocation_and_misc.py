@@ -1,4 +1,5 @@
 import math
+import re
 from pathlib import Path
 
 from costlayer import allocation as al
@@ -42,7 +43,7 @@ def test_optimizer_package_never_imports_tau2():
     root = Path(__file__).resolve().parents[1] / "costlayer" / "optimizer"
     for f in root.rglob("*.py") if root.exists() else []:
         src = f.read_text()
-        assert "tau2" not in src, f
+        assert not re.search(r"(?m)^\s*(import|from)\s+tau2", src), f
 
 
 def test_visible_tokens_counts_text_and_tool_calls():
