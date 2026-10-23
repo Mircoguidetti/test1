@@ -1,0 +1,90 @@
+name: paid-run
+
+# The ONLY workflow that sees ANTHROPIC_API_KEY. Manual trigger only: no pull_request and no
+# pull_request_target trigger here, ever. The workflow file must be on the default branch for
+# GitHub to allow a dispatch.
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: "Phase to run (only phase 1 is built; 2 and 3 need the founder's go)"
+        type: choice
+        options: ["1"]
+        default: "1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paid-runs
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      DISPATCH_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+      BRANCH: ${{ github.ref_name }}
+      TAU2_DATA_DIR: ${{ github.workspace }}/.tau2-bench/data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - name: tau2-bench at the pinned commit
+        run: |
+          git clone --quiet https://github.com/sierra-research/tau2-bench .tau2-bench
+          git -C .tau2-bench checkout --quiet cc1df47baa1544a34bb8c8e5c4ca72ad223b96a2
+
+      - name: Free checks (no key)
+        run: |
+          uv run ruff check .
+          uv run pytest -q
+
+      - name: Check out the spend branch (cumulative ledger)
+        run: |
+          if git ls-remote --exit-code --heads origin spend >/dev/null 2>&1; then
+            git fetch --quiet origin spend
+            git worktree add -B spend spend-wt FETCH_HEAD
+          else
+            git worktree add --orphan -b spend spend-wt
+          fi
+
+      - name: Dry run estimate (no key, no cost)
+        run: uv run costlayer dry-run --phase 1 --spend-dir spend-wt
+
+      - name: Paid run, phase 1
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: >
+          uv run costlayer phase1 --spend-dir spend-wt --dispatch-id "$DISPATCH_ID"
+          --out results/phase-1 --trace-dir traces/phase-1 --report reports/phase-1.md
+
+      - name: Upload sanitized traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traces-phase-1-${{ github.run_id }}
+          path: traces/
+          if-no-files-found: ignore
+
+      - name: Commit the ledger to the spend branch
+        if: always()
+        run: |
+          cd spend-wt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cp "$GITHUB_WORKSPACE"/results/phase-1/ledger-summary.json "ledger-summary-$DISPATCH_ID.json" || true
+          git add -A
+          git diff --cached --quiet || git commit -m "spend: dispatch $DISPATCH_ID"
+          git push origin HEAD:spend
+
+      - name: Commit results and report to the branch
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results reports
+          git diff --cached --quiet || git commit -m "phase 1: results and report"
+          git pull --rebase --quiet origin "$BRANCH" || true
+          git push origin "HEAD:$BRANCH"
