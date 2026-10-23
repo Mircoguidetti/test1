@@ -1,0 +1,360 @@
+{
+ "n_tasks": 21,
+ "tasks": [
+  "10",
+  "103",
+  "104",
+  "109",
+  "20",
+  "23",
+  "24",
+  "25",
+  "43",
+  "44",
+  "54",
+  "59",
+  "69",
+  "78",
+  "8",
+  "82",
+  "83",
+  "88",
+  "91",
+  "92",
+  "99"
+ ],
+ "anatomy": {
+  "default": {
+   "runs": 21,
+   "mean_agent_cost": 0.05921714285714286,
+   "mean_user_cost": 0.0014209523809523808,
+   "calls_per_run": 11.047619047619047,
+   "shares": {
+    "cache read": 0.1601860142711191,
+    "cache write": 0.5245482628307991,
+    "uncached input": 0.001119366528608781,
+    "output": 0.31414635636947297
+   },
+   "output_per_call": 168.38793103448276,
+   "thinking_per_call": 18.698275862068964,
+   "visible_est_per_call": 92.00862068965517
+  },
+  "E:medium": {
+   "runs": 21,
+   "mean_agent_cost": 0.05613504761904762,
+   "mean_user_cost": 0.0012736190476190475,
+   "calls_per_run": 10.238095238095237,
+   "shares": {
+    "cache read": 0.1534524276792771,
+    "cache write": 0.5408323653584634,
+    "uncached input": 0.0010756375973343868,
+    "output": 0.30463956936492503
+   },
+   "output_per_call": 167.03255813953487,
+   "thinking_per_call": 9.906976744186046,
+   "visible_est_per_call": 95.43720930232558
+  },
+  "E:low": {
+   "runs": 21,
+   "mean_agent_cost": 0.053211714285714286,
+   "mean_user_cost": 0.0013184761904761904,
+   "calls_per_run": 10.238095238095237,
+   "shares": {
+    "cache read": 0.16129123768609072,
+    "cache write": 0.540802564276725,
+    "uncached input": 0.0011490491215814783,
+    "output": 0.2967571489156028
+   },
+   "output_per_call": 154.23720930232557,
+   "thinking_per_call": 8.311627906976744,
+   "visible_est_per_call": 87.53953488372093
+  },
+  "T:bt": {
+   "runs": 21,
+   "mean_agent_cost": 0.05743871428571429,
+   "mean_user_cost": 0.001332142857142857,
+   "calls_per_run": 10.428571428571429,
+   "shares": {
+    "cache read": 0.15436506403438074,
+    "cache write": 0.53472591951958,
+    "uncached input": 0.0010711223588170365,
+    "output": 0.30983789408722223
+   },
+   "output_per_call": 170.65296803652967,
+   "thinking_per_call": 0.502283105022831,
+   "visible_est_per_call": 101.98630136986301
+  }
+ },
+ "success": {
+  "default": {
+   "successes": 20,
+   "n": 21
+  },
+  "E:medium": {
+   "successes": 16,
+   "n": 21,
+   "lost_vs_default": [
+    "109",
+    "69",
+    "82",
+    "83"
+   ],
+   "won_vs_default": []
+  },
+  "E:low": {
+   "successes": 18,
+   "n": 21,
+   "lost_vs_default": [
+    "43",
+    "82"
+   ],
+   "won_vs_default": []
+  },
+  "T:bt": {
+   "successes": 17,
+   "n": 21,
+   "lost_vs_default": [
+    "20",
+    "82",
+    "83"
+   ],
+   "won_vs_default": []
+  }
+ },
+ "failures": {
+  "default": 1,
+  "E:medium": 5,
+  "E:low": 3,
+  "T:bt": 4
+ },
+ "cost_agent_total": {
+  "default": 1.24356,
+  "E:medium": 1.178836,
+  "E:low": 1.117446,
+  "T:bt": 1.206213
+ },
+ "acceptable": [
+  "default",
+  "E:low"
+ ],
+ "global_star": "E:low",
+ "cost_ratio_vs_default": {
+  "E:medium": [
+   0.9479526520634308,
+   0.925056073826783,
+   0.9716048070669154
+  ],
+  "E:low": [
+   0.8985863167036572,
+   0.872094139068935,
+   0.9244434448371858
+  ],
+  "T:bt": [
+   0.9699676734536331,
+   0.9415416263623992,
+   0.9999885020183065
+  ]
+ },
+ "types": {
+  "10": "none",
+  "103": "return_delivered_order_items",
+  "104": "return_delivered_order_items",
+  "109": "modify_pending_order_address",
+  "20": "modify_pending_order_items",
+  "23": "exchange_delivered_order_items",
+  "24": "none",
+  "25": "none",
+  "43": "modify_user_address",
+  "44": "modify_pending_order_items",
+  "54": "cancel_pending_order",
+  "59": "cancel_pending_order",
+  "69": "cancel_pending_order",
+  "78": "modify_pending_order_address",
+  "8": "exchange_delivered_order_items",
+  "82": "return_delivered_order_items",
+  "83": "return_delivered_order_items",
+  "88": "cancel_pending_order",
+  "91": "return_delivered_order_items",
+  "92": "return_delivered_order_items",
+  "99": "exchange_delivered_order_items"
+ },
+ "type_counts": {
+  "none": 3,
+  "return_delivered_order_items": 6,
+  "modify_pending_order_address": 2,
+  "modify_pending_order_items": 2,
+  "exchange_delivered_order_items": 3,
+  "modify_user_address": 1,
+  "cancel_pending_order": 4
+ },
+ "per_type_choice": {
+  "cancel_pending_order": "E:low",
+  "exchange_delivered_order_items": "E:low",
+  "modify_pending_order_address": "default",
+  "modify_pending_order_items": "default",
+  "modify_user_address": "default",
+  "none": "E:low",
+  "return_delivered_order_items": "default"
+ },
+ "headroom": {
+  "headroom": -0.08461258978062491,
+  "chosen_cost": 1.211996,
+  "global_cost": 1.117446,
+  "chosen_failures": 2,
+  "null_p90": -0.05283387295672459,
+  "null_mean": -0.07894149247480428,
+  "beats_null": false,
+  "oracle_upper_bound": 0.016292509884146433
+ },
+ "chains": {
+  "agent_calls": 236,
+  "removable_calls": 48,
+  "call_share": 0.2033898305084746,
+  "agent_cost": 1.1174456999999998,
+  "removable_cost": 0.1403015,
+  "cost_share": 0.12555554153548582,
+  "top_patterns": [
+   [
+    "find_user_id_by_name_zip -> get_user_details -> get_order_details+get_order_details+get_order_details+get_order_details",
+    4
+   ],
+   [
+    "find_user_id_by_email -> get_user_details -> get_order_details+get_order_details",
+    2
+   ],
+   [
+    "find_user_id_by_email -> get_user_details -> get_order_details+get_order_details+get_order_details+get_order_details+get_order_details",
+    2
+   ],
+   [
+    "find_user_id_by_name_zip -> get_user_details -> get_order_details+get_order_details+get_order_details",
+    2
+   ],
+   [
+    "find_user_id_by_name_zip -> get_user_details -> get_order_details+get_order_details+get_order_details -> get_product_details+get_product_details+get_product_details+get_product_details",
+    1
+   ]
+  ]
+ },
+ "missing_traces": [],
+ "classifier": {
+  "n": 21,
+  "accuracy": 0.47619047619047616,
+  "labels": [
+   "cancel_pending_order",
+   "exchange_delivered_order_items",
+   "modify_pending_order_address",
+   "modify_pending_order_items",
+   "modify_user_address",
+   "none",
+   "return_delivered_order_items"
+  ],
+  "detail": [
+   {
+    "task": "10",
+    "label": "none",
+    "pred": "return_delivered_order_items"
+   },
+   {
+    "task": "103",
+    "label": "return_delivered_order_items",
+    "pred": "cancel_pending_order"
+   },
+   {
+    "task": "104",
+    "label": "return_delivered_order_items",
+    "pred": "cancel_pending_order"
+   },
+   {
+    "task": "109",
+    "label": "modify_pending_order_address",
+    "pred": "modify_pending_order_address"
+   },
+   {
+    "task": "20",
+    "label": "modify_pending_order_items",
+    "pred": "modify_pending_order_items"
+   },
+   {
+    "task": "23",
+    "label": "exchange_delivered_order_items",
+    "pred": "exchange_delivered_order_items"
+   },
+   {
+    "task": "24",
+    "label": "none",
+    "pred": "cancel_pending_order"
+   },
+   {
+    "task": "25",
+    "label": "none",
+    "pred": "return_delivered_order_items"
+   },
+   {
+    "task": "43",
+    "label": "modify_user_address",
+    "pred": "none"
+   },
+   {
+    "task": "44",
+    "label": "modify_pending_order_items",
+    "pred": "exchange_delivered_order_items"
+   },
+   {
+    "task": "54",
+    "label": "cancel_pending_order",
+    "pred": "none"
+   },
+   {
+    "task": "59",
+    "label": "cancel_pending_order",
+    "pred": "none"
+   },
+   {
+    "task": "69",
+    "label": "cancel_pending_order",
+    "pred": "return_delivered_order_items"
+   },
+   {
+    "task": "78",
+    "label": "modify_pending_order_address",
+    "pred": "modify_pending_order_address"
+   },
+   {
+    "task": "8",
+    "label": "exchange_delivered_order_items",
+    "pred": "exchange_delivered_order_items"
+   },
+   {
+    "task": "82",
+    "label": "return_delivered_order_items",
+    "pred": "return_delivered_order_items"
+   },
+   {
+    "task": "83",
+    "label": "return_delivered_order_items",
+    "pred": "return_delivered_order_items"
+   },
+   {
+    "task": "88",
+    "label": "cancel_pending_order",
+    "pred": "modify_pending_order_items"
+   },
+   {
+    "task": "91",
+    "label": "return_delivered_order_items",
+    "pred": "return_delivered_order_items"
+   },
+   {
+    "task": "92",
+    "label": "return_delivered_order_items",
+    "pred": "return_delivered_order_items"
+   },
+   {
+    "task": "99",
+    "label": "exchange_delivered_order_items",
+    "pred": "exchange_delivered_order_items"
+   }
+  ]
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "model": "claude-sonnet-5-5",
+ "config": "T:bt",
+ "task": "8",
+ "attempt": 1,
+ "status": "ok",
+ "termination": "user_stop",
+ "reward": 1.0,
+ "llm_calls": 11,
+ "user_calls": 7,
+ "cost_agent": 0.066949,
+ "cost_user": 0.001714,
+ "dropped_text": 3,
+ "max_tokens_stops": 0,
+ "empty_replies": 0,
+ "api_errors": [],
+ "hit_max_steps": false,
+ "n_messages": 27,
+ "thinking_tokens_reported": 110,
+ "tokens": {
+  "input": 34,
+  "cache_write": 13541,
+  "cache_read": 98282,
+  "output": 2320
+ }
+}
