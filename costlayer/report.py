@@ -11,7 +11,7 @@ from costlayer import allocation
 from costlayer.audit import audit
 from costlayer.ledger import PHASE_CAPS_USD, TOTAL_CAP_USD
 from costlayer.pricing import HAIKU, SONNET, est_tokens, price_for
-from costlayer.runner import ORDER_SEED
+from costlayer.runner import ORDER_SEED, run_name
 
 PINNED = "cc1df47baa1544a34bb8c8e5c4ca72ad223b96a2"
 
@@ -134,10 +134,7 @@ def build(
             if traces_dir:
                 v = []
                 for r in rs:
-                    f = (
-                        Path(traces_dir)
-                        / f"{cfg.replace(':', '-')}__{r['task']}__a{r['attempt']}.json"
-                    )
+                    f = Path(traces_dir) / run_name(r["model"], cfg, r["task"], r["attempt"])
                     if f.exists():
                         v.append(visible_tokens(json.loads(f.read_text())))
                 vis = sum(v) if v else None

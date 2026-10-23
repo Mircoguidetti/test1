@@ -1,0 +1,18 @@
+{
+ "model": "claude-haiku-5-5",
+ "config": "default",
+ "task": "23",
+ "attempt": 1,
+ "status": "reconstructed_from_ledger",
+ "termination": null,
+ "reward": null,
+ "llm_calls": 13,
+ "cost_agent": 0.004546,
+ "tokens": {
+  "input": 34,
+  "cache_write": 15750,
+  "cache_read": 125111,
+  "output": 2645
+ },
+ "note": "run file was overwritten by the Sonnet run (bug); reward and termination are unknown"
+}

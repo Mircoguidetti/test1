@@ -51,15 +51,17 @@ def build_kwargs(
     tools: list[dict[str, Any]],
     effort: str | None,
     thinking: dict[str, Any] | None,
+    max_tokens: int = MAX_TOKENS,
 ) -> dict[str, Any]:
     kwargs: dict[str, Any] = {
         "model": model,
-        "max_tokens": MAX_TOKENS,
+        "max_tokens": max_tokens,
         "system": system,
         "messages": messages,
-        "tools": tools,
         "cache_control": {"type": "ephemeral"},  # automatic caching, on in every configuration
     }
+    if tools:
+        kwargs["tools"] = tools
     # Never set temperature/top_p/top_k (400 on Sonnet 5.5) and never force tool_choice.
     if effort:
         kwargs["output_config"] = {"effort": effort}
@@ -92,8 +94,10 @@ class AnthropicClient:
         tools: list[dict[str, Any]],
         effort: str | None = None,
         thinking: dict[str, Any] | None = None,
+        max_tokens: int = MAX_TOKENS,
+        purpose: str = "agent",
     ) -> ApiResult:
-        estimate = worst_case_cost(model, request_chars(system, tools, messages), MAX_TOKENS)
+        estimate = worst_case_cost(model, request_chars(system, tools, messages), max_tokens)
         self.ledger.reserve(estimate)  # raises BudgetExceeded before anything is sent
         kwargs = build_kwargs(
             model=model,
@@ -102,6 +106,7 @@ class AnthropicClient:
             tools=tools,
             effort=effort,
             thinking=thinking,
+            max_tokens=max_tokens,
         )
         try:
             msg = self.sdk.messages.create(**kwargs)
@@ -110,7 +115,7 @@ class AnthropicClient:
             self.ledger.record(
                 estimate=estimate,
                 ctx=ctx,
-                purpose="agent",
+                purpose=purpose,
                 model=model,
                 usage=None,
                 status=kind,
@@ -133,7 +138,7 @@ class AnthropicClient:
         cost = self.ledger.record(
             estimate=estimate,
             ctx=ctx,
-            purpose="agent",
+            purpose=purpose,
             model=model,
             usage=usage,
             raw_usage=raw_usage,

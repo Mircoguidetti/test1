@@ -2,18 +2,25 @@ name: paid-run
 
 # The ONLY workflow that sees ANTHROPIC_API_KEY. Manual trigger only: no pull_request and no
 # pull_request_target trigger here, ever. The workflow file must be on the default branch for
-# GitHub to allow a dispatch.
+# GitHub to allow a dispatch; pick the branch to run it from in "Use workflow from".
 on:
   workflow_dispatch:
     inputs:
       phase:
-        description: "Phase to run (only phase 1 is built; 2 and 3 need the founder's go)"
+        description: "Phase to run (phase 2 needs the founder's go)"
         type: choice
-        options: ["1"]
+        options: ["1", "2"]
         default: "1"
+      founder_go:
+        description: "Phase 2 only: type phase2 once the founder has said go"
+        default: ""
+      phase1_run_id:
+        description: "Phase 2 only: run id of the phase 1 dispatch whose traces are reused"
+        default: "39998961720"
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: paid-runs
@@ -22,8 +29,10 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
+      PHASE: ${{ inputs.phase }}
+      FOUNDER_GO: ${{ inputs.founder_go }}
       DISPATCH_ID: ${{ github.run_id }}-${{ github.run_attempt }}
       BRANCH: ${{ github.ref_name }}
       TAU2_DATA_DIR: ${{ github.workspace }}/.tau2-bench/data
@@ -35,6 +44,12 @@ jobs:
         run: |
           git clone --quiet https://github.com/sierra-research/tau2-bench .tau2-bench
           git -C .tau2-bench checkout --quiet cc1df47baa1544a34bb8c8e5c4ca72ad223b96a2
+
+      - name: Refuse phase 2 without the founder's go
+        if: inputs.phase == '2' && inputs.founder_go != 'phase2'
+        run: |
+          echo "Phase 2 needs founder_go = phase2"
+          exit 1
 
       - name: Free checks (no key)
         run: |
@@ -50,22 +65,36 @@ jobs:
             git worktree add --orphan -b spend spend-wt
           fi
 
-      - name: Dry run estimate (no key, no cost)
-        run: uv run costlayer dry-run --phase 1 --spend-dir spend-wt
+      - name: Download the phase 1 traces (phase 2 reuses those runs)
+        if: inputs.phase == '2'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: traces-phase-1-${{ inputs.phase1_run_id }}
+          path: traces/phase-1-prior
+          run-id: ${{ inputs.phase1_run_id }}
+          github-token: ${{ github.token }}
 
-      - name: Paid run, phase 1
+      - name: Dry run estimate (no key, no cost)
+        run: uv run costlayer dry-run --phase "$PHASE" --spend-dir spend-wt
+
+      - name: Paid run
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: >
-          uv run costlayer phase1 --spend-dir spend-wt --dispatch-id "$DISPATCH_ID"
-          --out results/phase-1 --trace-dir traces/phase-1 --report reports/phase-1.md
+        run: |
+          if [ "$PHASE" = "1" ]; then
+            uv run costlayer phase1 --spend-dir spend-wt --dispatch-id "$DISPATCH_ID"
+          else
+            uv run costlayer phase2 --spend-dir spend-wt --dispatch-id "$DISPATCH_ID" \
+              --founder-go "$FOUNDER_GO"
+          fi
 
       - name: Upload sanitized traces
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: traces-phase-1-${{ github.run_id }}
-          path: traces/
+          name: traces-phase-${{ inputs.phase }}-${{ github.run_id }}
+          path: traces/phase-${{ inputs.phase }}
           if-no-files-found: ignore
 
       - name: Commit the ledger to the spend branch
@@ -74,7 +103,8 @@ jobs:
           cd spend-wt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp "$GITHUB_WORKSPACE"/results/phase-1/ledger-summary.json "ledger-summary-$DISPATCH_ID.json" || true
+          cp "$GITHUB_WORKSPACE/results/phase-$PHASE/ledger-summary.json" \
+            "ledger-summary-$DISPATCH_ID.json" || true
           git add -A
           git diff --cached --quiet || git commit -m "spend: dispatch $DISPATCH_ID"
           git push origin HEAD:spend
@@ -85,6 +115,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add results reports
-          git diff --cached --quiet || git commit -m "phase 1: results and report"
+          git diff --cached --quiet || git commit -m "phase $PHASE: results and report"
           git pull --rebase --quiet origin "$BRANCH" || true
           git push origin "HEAD:$BRANCH"
