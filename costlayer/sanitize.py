@@ -19,6 +19,12 @@ BANNED_KEYS = (
     "nl_assertions",
     "communicate_checks",
     "gt_data_hash",
+    # banking_knowledge task fields (and the task-level fields that sit next to the gold)
+    "required_documents",
+    "annotations",
+    "issues",
+    "reward_basis",
+    "user_scenario",
 )
 
 

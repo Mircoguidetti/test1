@@ -1,4 +1,5 @@
-"""Runner: one tau2 retail task under one configuration, with ledger, rails and a summary."""
+"""Runner: one tau2 task (retail or banking_knowledge) under one configuration, with ledger,
+rails and a summary."""
 
 from __future__ import annotations
 
@@ -33,6 +34,8 @@ from costlayer.sanitize import find_banned, sanitize_simulation
 from costlayer.usersim import USER_LLM, USER_LLM_ARGS
 
 DOMAIN = "retail"
+BANKING_DOMAIN = "banking_knowledge"
+DOMAINS = (DOMAIN, BANKING_DOMAIN)
 MAX_STEPS = 100
 ORDER_SEED = 42
 FIRST_RAIL_USD = 1.00
@@ -43,10 +46,26 @@ def run_name(model: str, config: str, task: str, attempt: int) -> str:
     return f"{model.split('-')[1]}__{config.replace(':', '-')}__{task}__a{attempt}.json"
 
 
-def check_data_dir() -> None:
+def check_data_dir(domain: str = DOMAIN) -> None:
     d = os.environ.get("TAU2_DATA_DIR")
-    if not d or not (Path(d) / "tau2" / "domains" / "retail" / "tasks.json").exists():
+    probe = "tasks.json" if domain == DOMAIN else "tasks"
+    if not d or not (Path(d) / "tau2" / "domains" / domain / probe).exists():
         raise RuntimeError("Set TAU2_DATA_DIR to the pinned tau2-bench checkout's data/ folder")
+
+
+def check_domain(domain: str, retrieval_variant: str | None) -> None:
+    """banking_knowledge needs an explicit local retrieval variant: tau2 would otherwise default
+    to `alltools`, which calls the OpenAI embeddings API."""
+    if domain not in DOMAINS:
+        raise ValueError(f"Unknown domain {domain!r}")
+    if domain == BANKING_DOMAIN:
+        if retrieval_variant is None:
+            raise ValueError("banking_knowledge needs an explicit retrieval_variant")
+        from costlayer.banking import assert_usable
+
+        assert_usable(retrieval_variant)
+    elif retrieval_variant is not None:
+        raise ValueError("retrieval_variant is only for banking_knowledge")
 
 
 def split_tasks(split: str) -> list[Task]:
@@ -59,15 +78,28 @@ def split_tasks(split: str) -> list[Task]:
     return [by_id[i] for i in order]
 
 
-def tool_kinds() -> dict[str, str]:
-    env = registry.get_env_constructor(DOMAIN)()
+def tasks_by_id(domain: str, ids: list[str]) -> list[Task]:
+    """Task objects for `ids`, in that order (banking_knowledge has no official split)."""
+    by_id = {t.id: t for t in registry.get_tasks_loader(domain)()}
+    return [by_id[i] for i in ids]
+
+
+def tool_kinds(domain: str = DOMAIN, retrieval_variant: str | None = None) -> dict[str, str]:
+    check_domain(domain, retrieval_variant)
+    kwargs = {"retrieval_variant": retrieval_variant} if retrieval_variant else {}
+    env = registry.get_env_constructor(domain)(**kwargs)
     return {name: t.value.upper() for name, t in get_tool_types(env.tools).items()}
 
 
-def make_config(model: str, config: str) -> TextRunConfig:
+def make_config(
+    model: str, config: str, domain: str = DOMAIN, retrieval_variant: str | None = None
+) -> TextRunConfig:
     assert model.startswith("claude-") and USER_LLM.split("/")[-1].startswith("claude-")
+    check_domain(domain, retrieval_variant)
+    extra = {"retrieval_config": retrieval_variant} if retrieval_variant else {}
     return TextRunConfig(
-        domain=DOMAIN,
+        domain=domain,
+        **extra,
         agent=AGENT_NAME,
         llm_agent=model,
         llm_args_agent=CONFIGS[config].llm_args(),
@@ -84,8 +116,17 @@ def make_config(model: str, config: str) -> TextRunConfig:
 
 class Runner:
     def __init__(
-        self, ledger: Ledger, client: AnthropicClient, out_dir: Path, trace_dir: Path | None = None
+        self,
+        ledger: Ledger,
+        client: AnthropicClient,
+        out_dir: Path,
+        trace_dir: Path | None = None,
+        domain: str = DOMAIN,
+        retrieval_variant: str | None = None,
     ) -> None:
+        check_domain(domain, retrieval_variant)
+        self.domain = domain
+        self.retrieval_variant = retrieval_variant
         self.ledger = ledger
         self.out_dir = Path(out_dir)
         self.trace_dir = Path(trace_dir) if trace_dir else None
@@ -106,7 +147,9 @@ class Runner:
         status, reason, reward, sim_info = "ok", None, 0.0, {}
         try:
             sim = run_single_task(
-                make_config(model, config), task, evaluation_type=EvaluationType.ENV
+                make_config(model, config, self.domain, self.retrieval_variant),
+                task,
+                evaluation_type=EvaluationType.ENV,
             )
             clean = sanitize_simulation(sim)
             assert not find_banned(clean), find_banned(clean)
@@ -153,6 +196,8 @@ class Runner:
             if ctx.thinking_reported_calls
             else None,
         }
+        if self.domain != DOMAIN:  # retail summaries keep their exact shape
+            summary.update({"domain": self.domain, "retrieval_variant": self.retrieval_variant})
         summary.update(self._tokens(model, config, task.id, attempt))
         name = run_name(model, config, task.id, attempt)
         (self.out_dir / "runs" / name).write_text(json.dumps(summary, indent=1) + "\n")
