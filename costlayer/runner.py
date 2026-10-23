@@ -38,6 +38,11 @@ ORDER_SEED = 42
 FIRST_RAIL_USD = 1.00
 
 
+def run_name(model: str, config: str, task: str, attempt: int) -> str:
+    """File name of a run. The model is part of it (Haiku and Sonnet share configs and tasks)."""
+    return f"{model.split('-')[1]}__{config.replace(':', '-')}__{task}__a{attempt}.json"
+
+
 def check_data_dir() -> None:
     d = os.environ.get("TAU2_DATA_DIR")
     if not d or not (Path(d) / "tau2" / "domains" / "retail" / "tasks.json").exists():
@@ -109,9 +114,9 @@ class Runner:
             reason = clean["termination_reason"]
             sim_info = {"n_messages": len(clean["messages"])}
             if self.trace_dir:
-                (
-                    self.trace_dir / f"{config.replace(':', '-')}__{task.id}__a{attempt}.json"
-                ).write_text(json.dumps(clean))
+                (self.trace_dir / run_name(model, config, task.id, attempt)).write_text(
+                    json.dumps(clean)
+                )
         except BudgetExceeded:
             raise
         except InfraError as e:
@@ -149,7 +154,7 @@ class Runner:
             else None,
         }
         summary.update(self._tokens(model, config, task.id, attempt))
-        name = f"{config.replace(':', '-')}__{task.id}__a{attempt}.json"
+        name = run_name(model, config, task.id, attempt)
         (self.out_dir / "runs" / name).write_text(json.dumps(summary, indent=1) + "\n")
         return summary
 
@@ -157,7 +162,9 @@ class Runner:
         t = {"input": 0, "cache_write": 0, "cache_read": 0, "output": 0}
         for line in self.ledger.path.read_text().splitlines():
             r = json.loads(line)
-            if (r.get("config"), r.get("task"), r.get("attempt"), r["purpose"]) == (
+            # the model is part of the key: Haiku and Sonnet can run the same config and task
+            if (r.get("model"), r.get("config"), r.get("task"), r.get("attempt"), r["purpose"]) == (
+                model,
                 config,
                 task,
                 attempt,
@@ -182,16 +189,22 @@ class Runner:
     def run_block(
         self, model: str, configs: list[str], tasks: list[Task], concurrency: int = 3
     ) -> list[dict[str, Any]]:
-        """Tasks in order; a cap hit leaves earlier tasks complete."""
+        return self.run_plan(model, [(t, configs) for t in tasks], concurrency)
+
+    def run_plan(
+        self, model: str, plan: list[tuple[Task, list[str]]], concurrency: int = 3
+    ) -> list[dict[str, Any]]:
+        """Tasks in order, the configurations of a task together; a cap hit leaves earlier tasks
+        complete (the analysis only uses tasks with every configuration)."""
         results: list[dict[str, Any]] = []
         lock = threading.Lock()
         stop = threading.Event()
 
-        def work(t: Task) -> None:
+        def work(item: tuple[Task, list[str]]) -> None:
             if stop.is_set():
                 return
             try:
-                r = self.run_task(model, configs, t)
+                r = self.run_task(model, item[1], item[0])
             except BudgetExceeded:
                 stop.set()
                 raise
@@ -200,7 +213,7 @@ class Runner:
 
         errors: list[BudgetExceeded] = []
         with ThreadPoolExecutor(max_workers=concurrency) as ex:
-            futs = [ex.submit(work, t) for t in tasks]
+            futs = [ex.submit(work, it) for it in plan]
             for f in futs:
                 try:
                     f.result()

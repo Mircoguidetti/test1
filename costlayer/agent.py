@@ -167,6 +167,7 @@ class AnthropicAgent(HalfDuplexAgent[AgentState]):
             "prompt_tokens": res.usage.prompt_tokens,
             "completion_tokens": res.usage.output_tokens,
             **res.usage.as_dict(),
+            "thinking_tokens": res.thinking_tokens,
         }
         raw = {"stop_reason": res.stop_reason, "usage": res.raw_usage}
         if uses:

@@ -1,5 +1,18 @@
 # Phase 1 report: smoke test
 
+> **Correction added in the phase 2 PR.** The token counts of every `default` Sonnet run in the tables below were inflated by the Haiku smoke runs on the same three tasks: the runner summed ledger rows by (config, task, attempt) and ignored the model. This affects the `default` row of "Cost anatomy", the `default` line of "Thinking tokens", the sentence "E:low vs default", and the token columns of the `default` runs. It does **not** affect any cost in dollars, `LLM calls`, `c(x)`, the allocation table (N_train 21, N_test 40) or the budget, because those come from per-run spend, not from the token sums. Corrected numbers, straight from the ledger (`spend` branch, dispatch 39998961720-1), Sonnet only:
+>
+> | config | calls | cache read | cache write | uncached input | output | output/call | reported thinking/call | non-thinking output/call |
+> |---|---:|---:|---:|---:|---:|---:|---:|---:|
+> | default | 41 | 18% | 49% | 0% | 33% | 192 | 24.3 | 168 |
+> | E:medium | 17 | 21% | 45% | 0% | 34% | 174 | 14.9 | 159 |
+> | E:low | 41 | 18% | 53% | 0% | 29% | 149 | 6.9 | 142 |
+> | T:bt | 19 | 22% | 43% | 0% | 35% | 171 | 0.0 | 171 |
+>
+> Cache-write tokens per run, Sonnet: `default` [15688, 15660, 15599] (mean 15649); `E:low` [15022, 14895, 15259] (mean 15059).
+>
+> Corrected reading: cache writes per run are the same for `default` and `E:low` (about 15.6K vs 15.1K tokens, not 2x). Output per call is 192 for `default` and 149 for `E:low` (-22%, not -64%). The API's thinking-token field is small in every configuration (24 and 7 per call) and explains only about 17 of the 43 tokens per call that differ; the rest is output the field does not call thinking. With 1 to 3 tasks per configuration this is a first look, not a result. The per-call split is investigated in the phase 2 PR.
+
 Benchmark: `sierra-research/tau2-bench` at `cc1df47baa1544a34bb8c8e5c4ca72ad223b96a2` (retail, official train split, seed-42 order, `EvaluationType.ENV`, `max_steps=100`, `max_retries=0`). User simulator: `claude-haiku-5-5`, same in every configuration. Cost per run below is agent plus user simulator unless stated.
 
 ## Verdict of the smoke test
