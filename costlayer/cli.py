@@ -9,16 +9,18 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from costlayer import banking_phase1 as bank1
+from costlayer import budget as budget_mod
 from costlayer import ledger as ledger_mod
 from costlayer import phase1 as phase1_mod
 from costlayer import phase2 as phase2_mod
-from costlayer import report, report2
+from costlayer import report, report2, report_banking
 from costlayer.client import AnthropicClient
 from costlayer.ledger import BudgetExceeded, Ledger, plan_dispatch, read_prior, write_start
 from costlayer.optimizer import analysis
 from costlayer.optimizer.classify_eval import loo_accuracy
 from costlayer.optimizer.data import load_runs, load_tool_kinds
-from costlayer.runner import Runner, check_data_dir, split_tasks, tool_kinds
+from costlayer.runner import BANKING_DOMAIN, Runner, check_data_dir, split_tasks, tool_kinds
 from costlayer.usersim import install
 
 # Planned cost of phase 1 (CLAUDE.md): there is no measured per-run cost yet.
@@ -200,6 +202,113 @@ def cmd_audit(_: argparse.Namespace) -> int:
     return 0
 
 
+# -- test 2 (banking_knowledge): own budget file, own spend branch (`spend2`) --------------------
+
+
+def _banking_gate(a: argparse.Namespace) -> tuple[budget_mod.Budget, float]:
+    """Budget file, phase cap and the founder's-go rule. Raises SystemExit with the reason."""
+    try:
+        budget = budget_mod.load_budget(Path(a.budget))
+        cap = budget_mod.check_may_start(budget, a.phase, a.founder_go)
+    except budget_mod.BudgetFileError as e:
+        raise SystemExit(f"REFUSED: {e}") from e
+    if a.phase != "b1":
+        raise SystemExit(f"REFUSED: phase {a.phase} is not built yet (test 2 phase 0 builds b1)")
+    return budget, cap
+
+
+def cmd_banking_dry_run(a: argparse.Namespace) -> int:
+    budget, cap = _banking_gate(a)
+    plan = bank1.dry_run_plan()
+    spend = Path(a.spend_dir) if a.spend_dir else None
+    prior = read_prior(spend) if spend else ledger_mod.Prior()
+    print(f"DRY RUN test 2, phase {a.phase} (no API call, no cost)")
+    print(f"  tasks (banking_order seed 42, ACTION excluded): {', '.join(plan['tasks'])}")
+    print(
+        f"  runs: {plan['haiku_runs']} Haiku (default) + {plan['sonnet_runs_committed']} Sonnet "
+        f"(task 1 on {', '.join(bank1.SONNET_CONFIGS)}) = {plan['runs_committed']} committed; "
+        f"+ up to {plan['sonnet_runs_conditional']} Sonnet (tasks 2 and 3 on "
+        f"{', '.join(bank1.LATER_CONFIGS)}, only while the cap allows) = {plan['runs_max']} at most"
+    )
+    print(
+        f"  estimated cost: ~${plan['cost_committed']:.2f} committed, ~${plan['cost_max']:.2f} if "
+        "every conditional run happens (planning figures from the cost model; nothing is "
+        "measured on banking_knowledge yet)"
+    )
+    remaining = cap - prior.by_phase.get(a.phase, 0.0)
+    print(
+        f"  phase cap ${cap:.2f} (80% = ${0.8 * cap:.2f}); remaining for this phase "
+        f"${remaining:.2f}; spent before this dispatch ${prior.total:.2f} of ${budget.total:.2f}"
+    )
+    ok = (
+        plan["cost_committed"] <= 0.8 * cap
+        and remaining > 0
+        and prior.total + remaining <= budget.total
+    )
+    print(
+        "  verdict:", "committed part within 80% of the phase cap" if ok else "TOO HIGH, do not run"
+    )
+    return 0 if ok else 1
+
+
+def cmd_banking_phase(a: argparse.Namespace) -> int:
+    budget, _ = _banking_gate(a)
+    check_data_dir(BANKING_DOMAIN)
+    spend = Path(a.spend_dir)
+    cap = plan_dispatch(
+        spend, a.dispatch_id, a.phase, phase_caps=budget.phase_caps, total_cap=budget.total
+    )
+    write_start(spend, a.dispatch_id, a.phase, cap)
+    prior = read_prior(spend, exclude=a.dispatch_id)
+    led = Ledger(
+        spend / f"ledger-{a.dispatch_id}.jsonl",
+        a.dispatch_id,
+        a.phase,
+        cap,
+        prior_total=prior.total,
+        total_cap=budget.total,
+    )
+    led.path.touch()
+    client = AnthropicClient(led)
+    install(led)
+    out = Path(a.out)
+    runner = Runner(
+        led,
+        client,
+        out,
+        Path(a.trace_dir),
+        domain=BANKING_DOMAIN,
+        retrieval_variant=bank1.VARIANT,
+    )
+    (out / "tool_kinds.json").write_text(
+        json.dumps(tool_kinds(BANKING_DOMAIN, bank1.VARIANT), indent=1) + "\n"
+    )
+    result: dict = {}
+    try:
+        result = bank1.run_banking_phase1(runner, led, out)
+    finally:
+        runs = report.load_runs(out)
+        summ = ledger_mod.summarize([led.path])
+        (out / "ledger-summary.json").write_text(json.dumps(summ, indent=1) + "\n")
+        Path(a.report).parent.mkdir(parents=True, exist_ok=True)
+        Path(a.report).write_text(
+            report_banking.build(
+                result,
+                runs,
+                ledger_rows_of(led.path),
+                summ,
+                prior.total,
+                budget,
+                _console_note(summ["total"]),
+            )
+        )
+    return 0
+
+
+def ledger_rows_of(path: Path) -> list[dict[str, Any]]:
+    return bank1.ledger_rows(path)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="costlayer")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -227,6 +336,23 @@ def main(argv: list[str] | None = None) -> int:
     p2.add_argument("--founder-go", default="")
     p2.add_argument("--phase1-runs", default="results/phase-1/runs")
     p2.add_argument("--prior-traces", nargs="*", default=["traces/phase-1-prior"])
+
+    def banking(name: str, fn: Any, paid: bool) -> argparse.ArgumentParser:
+        sp = sub.add_parser(name, help="test 2 (banking_knowledge)" + (": paid" if paid else ""))
+        sp.add_argument("--phase", choices=list(budget_mod.PHASES), default="b1")
+        sp.add_argument("--budget", default=str(budget_mod.DEFAULT_PATH))
+        sp.add_argument("--founder-go", default="", help="b2/b3 only: must equal the phase key")
+        sp.add_argument("--spend-dir", required=paid, default="")
+        if paid:
+            sp.add_argument("--dispatch-id", required=True)
+            sp.add_argument("--out", default="results/banking-phase-1")
+            sp.add_argument("--trace-dir", default="traces/banking-phase-1")
+            sp.add_argument("--report", default="reports/banking-phase-1.md")
+        sp.set_defaults(fn=fn)
+        return sp
+
+    banking("banking-dry-run", cmd_banking_dry_run, paid=False)
+    banking("banking-phase", cmd_banking_phase, paid=True)
     an = sub.add_parser("analyze", help="offline: analysis and report from runs and traces")
     an.add_argument("--out", default="results/phase-2")
     an.add_argument("--trace-dir", nargs="*", default=["traces/phase-2"])
