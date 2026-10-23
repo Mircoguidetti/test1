@@ -6,7 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "anthropic>=0.70",
     "pydantic>=2",
-    "tau2",
+    "tau2[knowledge]",
     "audioop-lts>=0.2; python_version >= '3.13'",  # tau2 imports audioop, removed in 3.13
 ]
 
