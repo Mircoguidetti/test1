@@ -19,7 +19,14 @@ from tau2.registry import registry
 from tau2.runner.batch import run_single_task
 
 from costlayer import agent as agent_mod
-from costlayer.agent import AGENT_NAME, CONFIGS, AgentRunFailure, RuntimeHandles
+from costlayer.agent import (
+    AGENT_NAME,
+    ALL_CONFIGS,
+    BANKING_CONFIGS,
+    CONFIGS,
+    AgentRunFailure,
+    RuntimeHandles,
+)
 from costlayer.client import AnthropicClient
 from costlayer.context import (
     ApiRequestError,
@@ -96,13 +103,16 @@ def make_config(
 ) -> TextRunConfig:
     assert model.startswith("claude-") and USER_LLM.split("/")[-1].startswith("claude-")
     check_domain(domain, retrieval_variant)
+    allowed = BANKING_CONFIGS if domain == BANKING_DOMAIN else CONFIGS
+    if config not in allowed:  # e.g. C:top3 on retail, or E:medium in test 2
+        raise ValueError(f"Configuration {config!r} is not defined for domain {domain!r}")
     extra = {"retrieval_config": retrieval_variant} if retrieval_variant else {}
     return TextRunConfig(
         domain=domain,
         **extra,
         agent=AGENT_NAME,
         llm_agent=model,
-        llm_args_agent=CONFIGS[config].llm_args(),
+        llm_args_agent=ALL_CONFIGS[config].llm_args(),
         llm_user=USER_LLM,
         llm_args_user=dict(USER_LLM_ARGS),
         max_steps=MAX_STEPS,
@@ -197,7 +207,18 @@ class Runner:
             else None,
         }
         if self.domain != DOMAIN:  # retail summaries keep their exact shape
-            summary.update({"domain": self.domain, "retrieval_variant": self.retrieval_variant})
+            summary.update(
+                {
+                    "domain": self.domain,
+                    "retrieval_variant": self.retrieval_variant,
+                    "retrieval_results": ctx.retrieval_results,
+                    "retrieval_chars_raw": ctx.retrieval_chars_raw,
+                    "retrieval_chars_in_context": ctx.retrieval_chars_in,
+                    "cut_results": ctx.cut_results,
+                    "cut_items_omitted": ctx.cut_items_omitted,
+                    "cut_unparsed": ctx.cut_unparsed,
+                }
+            )
         summary.update(self._tokens(model, config, task.id, attempt))
         name = run_name(model, config, task.id, attempt)
         (self.out_dir / "runs" / name).write_text(json.dumps(summary, indent=1) + "\n")

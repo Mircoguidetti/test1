@@ -30,6 +30,7 @@ from tau2.registry import registry
 
 from costlayer.client import AnthropicClient
 from costlayer.context import current_context
+from costlayer.cut import CUT_TOOLS, cut_for_tool
 
 AGENT_NAME = "costlayer_agent"
 DEFAULT_GREETING = "Hi! How can I help you today?"
@@ -41,20 +42,35 @@ class Policy:
 
     effort: str | None = None  # None = model default (high on Sonnet 5.5)
     thinking: str | None = None  # None = default adaptive; "between_tools"
+    cut_top: int | None = None  # C:top<k>: cut KB_search and grep results to k items (test 2)
 
     def thinking_param(self) -> dict[str, Any] | None:
         return {"type": self.thinking} if self.thinking else None
 
     def llm_args(self) -> dict[str, Any]:
-        return {"effort": self.effort, "thinking": self.thinking}
+        args: dict[str, Any] = {"effort": self.effort, "thinking": self.thinking}
+        if self.cut_top is not None:  # retail configurations keep their exact llm_args
+            args["cut_top"] = self.cut_top
+        return args
 
 
+# Test 1 (retail). Phase 1 and phase 2 iterate over this dict: do not add keys to it.
 CONFIGS: dict[str, Policy] = {
     "default": Policy(),
     "E:medium": Policy(effort="medium"),
     "E:low": Policy(effort="low"),
     "T:bt": Policy(thinking="between_tools"),
 }
+
+# Test 2 (banking_knowledge, TEST2.md). E:medium and T:bt are dropped. The value 3 is fixed.
+BANKING_CONFIGS: dict[str, Policy] = {
+    "default": Policy(),
+    "E:low": Policy(effort="low"),
+    "C:top3": Policy(cut_top=3),
+    "EC": Policy(effort="low", cut_top=3),
+}
+
+ALL_CONFIGS: dict[str, Policy] = {**CONFIGS, **BANKING_CONFIGS}
 
 
 class AgentRunFailure(AgentError):
@@ -116,16 +132,46 @@ class AnthropicAgent(HalfDuplexAgent[AgentState]):
     # -- incoming message -> API user turn ------------------------------------------------
 
     @staticmethod
-    def _user_turn(message: UserMessage | ToolMessage | MultiToolMessage) -> dict[str, Any]:
+    def _tool_names(state: AgentState) -> dict[str, str]:
+        """tool_use id -> tool name from the last assistant turn (a ToolMessage has no name)."""
+        for m in reversed(state.api_messages):
+            if m["role"] == "assistant":
+                return {b["id"]: b["name"] for b in m["content"] if b.get("type") == "tool_use"}
+        return {}
+
+    def _tool_result_text(self, ctx: Any, name: str | None, content: str) -> str:
+        """What enters the conversation for one tool result. Called once per result, at first
+        insertion; the returned string is never rewritten afterwards (cache prefix stays intact)."""
+        if name not in CUT_TOOLS:
+            return content
+        cut = cut_for_tool(name, content, self.policy.cut_top)
+        ctx.retrieval_results += 1
+        ctx.retrieval_chars_raw += len(content)
+        if cut is None:
+            ctx.retrieval_chars_in += len(content)
+            return content
+        ctx.retrieval_chars_in += len(cut.text)
+        ctx.cut_results += 1 if cut.omitted else 0
+        ctx.cut_items_omitted += cut.omitted
+        ctx.cut_unparsed += 0 if cut.parsed else 1
+        return cut.text
+
+    def _user_turn(
+        self, message: UserMessage | ToolMessage | MultiToolMessage, state: AgentState, ctx: Any
+    ) -> dict[str, Any]:
         if isinstance(message, UserMessage):
             return {"role": "user", "content": message.content or "(empty message)"}
         tool_msgs = message.tool_messages if isinstance(message, MultiToolMessage) else [message]
+        names = self._tool_names(state)
         blocks = []
         for tm in tool_msgs:
+            content = tm.content or ""
+            if content and not tm.error:
+                content = self._tool_result_text(ctx, names.get(tm.id), content)
             b: dict[str, Any] = {
                 "type": "tool_result",
                 "tool_use_id": tm.id,
-                "content": tm.content if tm.content else "(empty result)",
+                "content": content if content else "(empty result)",
             }
             if tm.error:
                 b["is_error"] = True
@@ -137,7 +183,7 @@ class AnthropicAgent(HalfDuplexAgent[AgentState]):
     ) -> tuple[AssistantMessage, AgentState]:
         ctx = current_context()
         ctx.check_abort()
-        state.api_messages.append(self._user_turn(message))
+        state.api_messages.append(self._user_turn(message, state, ctx))
         t0 = time.perf_counter()
         res = self.client.create(
             ctx=ctx,
@@ -209,7 +255,7 @@ def create_costlayer_agent(tools: list[Tool], domain_policy: str, **kwargs: Any)
         tools,
         domain_policy,
         model=kwargs["llm"],
-        policy=Policy(args.get("effort"), args.get("thinking")),
+        policy=Policy(args.get("effort"), args.get("thinking"), args.get("cut_top")),
         client=client,
     )
 
