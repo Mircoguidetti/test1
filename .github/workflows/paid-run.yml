@@ -1,0 +1,79 @@
+name: paid-run
+
+# The ONLY workflow that sees ANTHROPIC_API_KEY. Manual trigger only: no pull_request and no
+# pull_request_target triggers here, ever.
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: "Phase to run (2 and 3 need the founder's go)"
+        type: choice
+        options: ["1", "2", "3"]
+        default: "1"
+      per_domain:
+        description: "Phase 1: train tasks per domain"
+        default: "20"
+      founder_go:
+        description: "Phases 2/3 only: type phase2 or phase3 once the founder has said go"
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paid-run
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+
+      - name: Free checks (no key)
+        run: |
+          uv run ruff check .
+          uv run pytest -q
+
+      - name: Dry run estimate (no key, no cost)
+        if: inputs.phase == '1'
+        env:
+          PER_DOMAIN: ${{ inputs.per_domain }}
+        run: uv run costlayer dry-run --phase 1 --model haiku --per-domain "$PER_DOMAIN"
+
+      - name: Paid run
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PHASE: ${{ inputs.phase }}
+          PER_DOMAIN: ${{ inputs.per_domain }}
+          FOUNDER_GO: ${{ inputs.founder_go }}
+        run: |
+          case "$PHASE" in
+            1) uv run costlayer phase1 --model haiku --per-domain "$PER_DOMAIN" ;;
+            2) uv run costlayer phase2 --founder-go "$FOUNDER_GO" ;;
+            3) uv run costlayer phase3 --founder-go "$FOUNDER_GO" ;;
+          esac
+
+      - name: Upload traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traces-phase-${{ inputs.phase }}
+          path: traces/
+          if-no-files-found: ignore
+
+      - name: Commit ledger, results and report
+        if: always()
+        env:
+          PHASE: ${{ inputs.phase }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ledger.jsonl results reports
+          git diff --cached --quiet || git commit -m "phase $PHASE: ledger, results and report"
+          git pull --rebase origin "$BRANCH" || true
+          git push origin "HEAD:$BRANCH"
