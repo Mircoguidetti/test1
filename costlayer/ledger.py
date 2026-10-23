@@ -1,4 +1,10 @@
-"""Append-only cost ledger with hard budget caps."""
+"""Spend ledger with hard caps, cumulative across workflow dispatches.
+
+Layout (the `spend` branch, checked out into a directory):
+  start-<dispatch id>.json   written when a dispatch begins; records the reserved phase cap
+  ledger-<dispatch id>.jsonl one row per API call (committed by an `if: always()` step)
+A start file without a matching ledger counts as spending its whole reserved cap.
+"""
 
 from __future__ import annotations
 
@@ -7,11 +13,13 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
+from costlayer.context import RunContext
 from costlayer.pricing import Usage, cost_usd
 
 TOTAL_CAP_USD = 27.0
-PHASE_CAPS_USD = {0: 0.0, 1: 3.0, 2: 7.0, 3: 15.0}
+PHASE_CAPS_USD = {1: 2.50, 2: 9.00, 3: 13.00}  # plus a $2.50 reserve that needs a decision
 
 
 class BudgetExceeded(RuntimeError):
@@ -19,57 +27,96 @@ class BudgetExceeded(RuntimeError):
 
 
 @dataclass
+class Prior:
+    total: float = 0.0
+    by_phase: dict[int, float] = field(default_factory=dict)
+
+
+def read_prior(spend_dir: Path, exclude: str | None = None) -> Prior:
+    """Spend of all earlier dispatches. Unfinished dispatches count at their reserved cap."""
+    prior = Prior()
+    spend_dir = Path(spend_dir)
+    if not spend_dir.exists():
+        return prior
+    starts = {
+        p.stem.removeprefix("start-"): json.loads(p.read_text())
+        for p in spend_dir.glob("start-*.json")
+    }
+    ledgers = {p.stem.removeprefix("ledger-"): p for p in spend_dir.glob("ledger-*.jsonl")}
+    for run_id in set(starts) | set(ledgers):
+        if run_id == exclude:
+            continue
+        if run_id in ledgers:
+            cost = 0.0
+            phase = starts.get(run_id, {}).get("phase", 0)
+            for line in ledgers[run_id].read_text().splitlines():
+                if line.strip():
+                    row = json.loads(line)
+                    cost += row["cost"]
+                    phase = row.get("phase", phase)
+        else:
+            cost, phase = starts[run_id]["cap"], starts[run_id]["phase"]
+        prior.total += cost
+        prior.by_phase[phase] = prior.by_phase.get(phase, 0.0) + cost
+    return prior
+
+
+def write_start(spend_dir: Path, dispatch_id: str, phase: int, cap: float) -> None:
+    Path(spend_dir).mkdir(parents=True, exist_ok=True)
+    (Path(spend_dir) / f"start-{dispatch_id}.json").write_text(
+        json.dumps({"phase": phase, "cap": cap, "ts": round(time.time())}) + "\n"
+    )
+
+
+def plan_dispatch(spend_dir: Path, dispatch_id: str, phase: int) -> float:
+    """Return the cap this dispatch may spend, or raise if the total cap would be passed."""
+    prior = read_prior(spend_dir, exclude=dispatch_id)
+    remaining_phase = PHASE_CAPS_USD[phase] - prior.by_phase.get(phase, 0.0)
+    if remaining_phase <= 0:
+        raise BudgetExceeded(f"phase {phase} cap already used: {prior.by_phase.get(phase)}")
+    if prior.total + remaining_phase > TOTAL_CAP_USD:
+        raise BudgetExceeded(
+            f"prior spend ${prior.total:.2f} + phase budget ${remaining_phase:.2f} "
+            f"would pass the ${TOTAL_CAP_USD} cap"
+        )
+    return remaining_phase
+
+
 class Ledger:
-    """Every API call (agent, user simulator, classifier) is written here.
+    """Every API call goes through `reserve` (before) and `record` (after)."""
 
-    `reserve` must be called before each call: it aborts when spent + in-flight reservations
-    + a conservative estimate for the call would exceed the phase cap or the total cap.
-    """
-
-    path: Path
-    phase: int
-    total_cap: float = TOTAL_CAP_USD
-    phase_cap: float | None = None
-    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
-    _inflight: float = 0.0
-    _spent_total: float = 0.0
-    _spent_phase: float = 0.0
-
-    def __post_init__(self) -> None:
-        self.path = Path(self.path)
-        if self.phase_cap is None:
-            self.phase_cap = PHASE_CAPS_USD[self.phase]
-        if self.path.exists():
-            for line in self.path.read_text().splitlines():
-                if not line.strip():
-                    continue
-                row = json.loads(line)
-                self._spent_total += row["cost"]
-                if row["phase"] == self.phase:
-                    self._spent_phase += row["cost"]
-
-    @property
-    def spent_total(self) -> float:
-        return self._spent_total
-
-    @property
-    def spent_phase(self) -> float:
-        return self._spent_phase
+    def __init__(
+        self,
+        path: Path,
+        dispatch_id: str,
+        phase: int,
+        phase_cap: float,
+        prior_total: float = 0.0,
+        total_cap: float = TOTAL_CAP_USD,
+    ) -> None:
+        self.path = Path(path)
+        self.dispatch_id = dispatch_id
+        self.phase = phase
+        self.phase_cap = phase_cap
+        self.prior_total = prior_total
+        self.total_cap = total_cap
+        self._lock = threading.Lock()
+        self._inflight = 0.0
+        self.spent = 0.0  # this dispatch
+        self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def reserve(self, estimate: float) -> float:
-        assert self.phase_cap is not None
         with self._lock:
-            projected_total = self._spent_total + self._inflight + estimate
-            projected_phase = self._spent_phase + self._inflight + estimate
-            if projected_total > self.total_cap:
+            projected = self.spent + self._inflight + estimate
+            if projected > self.phase_cap:
                 raise BudgetExceeded(
-                    f"total cap: spent {self._spent_total:.4f} + est {estimate:.4f} "
-                    f"> {self.total_cap}"
+                    f"phase {self.phase} cap: spent {self.spent:.4f} + in flight "
+                    f"{self._inflight:.4f} + worst case {estimate:.4f} > {self.phase_cap:.2f}"
                 )
-            if projected_phase > self.phase_cap:
+            if self.prior_total + projected > self.total_cap:
                 raise BudgetExceeded(
-                    f"phase {self.phase} cap: spent {self._spent_phase:.4f} + est "
-                    f"{estimate:.4f} > {self.phase_cap}"
+                    f"total cap: prior {self.prior_total:.4f} + {projected:.4f} "
+                    f"> {self.total_cap:.2f}"
                 )
             self._inflight += estimate
             return estimate
@@ -79,45 +126,69 @@ class Ledger:
             self._inflight = max(0.0, self._inflight - estimate)
 
     def record(
-        self, *, estimate: float, run_id: str, purpose: str, model: str, usage: Usage
+        self,
+        *,
+        estimate: float,
+        ctx: RunContext | None,
+        purpose: str,
+        model: str,
+        usage: Usage | None,
+        raw_usage: dict[str, Any] | None = None,
+        status: str = "ok",
+        error: str | None = None,
+        role: str | None = None,
     ) -> float:
-        cost = cost_usd(model, usage)
+        """Write one row. A call with no response (usage None) costs 0."""
+        cost = cost_usd(model, usage) if usage else 0.0
         row = {
             "ts": round(time.time(), 2),
+            "dispatch": self.dispatch_id,
             "phase": self.phase,
-            "run": run_id,
+            **(ctx.tag() if ctx else {}),
             "purpose": purpose,
             "model": model,
-            **usage.as_dict(),
+            **(usage.as_dict() if usage else Usage().as_dict()),
+            "raw_usage": raw_usage,
             "cost": round(cost, 8),
+            "status": status,
+            "error": error[:300] if error else None,
         }
         with self._lock:
             self._inflight = max(0.0, self._inflight - estimate)
-            self._spent_total += cost
-            self._spent_phase += cost
+            self.spent += cost
             with self.path.open("a") as f:
                 f.write(json.dumps(row, separators=(",", ":")) + "\n")
+        if ctx is not None:
+            ctx.spent += cost
+            if purpose == "agent":
+                ctx.spent_agent += cost
+            else:
+                ctx.spent_user += cost
         return cost
 
 
-def summarize(path: Path) -> dict:
-    """Totals by phase, purpose and model (committed as a small JSON summary)."""
-    out: dict = {"total": 0.0, "calls": 0, "by_phase": {}, "by_purpose": {}, "by_model": {}}
-    if not Path(path).exists():
-        return out
-    for line in Path(path).read_text().splitlines():
-        if not line.strip():
-            continue
-        r = json.loads(line)
-        out["total"] += r["cost"]
-        out["calls"] += 1
-        for key, val in (
-            ("by_phase", str(r["phase"])),
-            ("by_purpose", r["purpose"]),
-            ("by_model", r["model"]),
-        ):
-            out[key][val] = out[key].get(val, 0.0) + r["cost"]
+def summarize(paths: list[Path]) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "total": 0.0,
+        "calls": 0,
+        "by_purpose": {},
+        "by_model": {},
+        "by_config": {},
+    }
+    for path in paths:
+        for line in Path(path).read_text().splitlines():
+            if not line.strip():
+                continue
+            r = json.loads(line)
+            out["total"] += r["cost"]
+            out["calls"] += 1
+            for key, val in (
+                ("by_purpose", r["purpose"]),
+                ("by_model", r["model"]),
+                ("by_config", r.get("config", "-")),
+            ):
+                out[key][val] = out[key].get(val, 0.0) + r["cost"]
     out["total"] = round(out["total"], 6)
-    for key in ("by_phase", "by_purpose", "by_model"):
+    for key in ("by_purpose", "by_model", "by_config"):
         out[key] = {k: round(v, 6) for k, v in out[key].items()}
     return out

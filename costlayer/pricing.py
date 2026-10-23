@@ -16,11 +16,9 @@ class Price:
     cache_read: float
 
 
-# Sonnet cache read: CLAUDE.md lists $0.10, but 0.1x of the $2 input price is $0.20 and the
-# Anthropic model table says $0.20. We use the higher number: it can only make the cap
-# stricter and the savings estimates more conservative. Verify before the first Sonnet run.
+# Table from CLAUDE.md ("use this table, not multipliers").
 PRICES: dict[str, Price] = {
-    SONNET: Price(input=2.0, output=10.0, cache_write=2.5, cache_read=0.20),
+    SONNET: Price(input=2.0, output=10.0, cache_write=2.5, cache_read=0.10),
     HAIKU: Price(input=0.10, output=0.50, cache_write=0.125, cache_read=0.01),
 }
 # Haiku 5.5 prompts above 100K tokens are priced higher.
