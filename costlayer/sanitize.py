@@ -28,7 +28,7 @@ BANNED_KEYS = (
 )
 
 
-def sanitize_message(m: Any) -> dict[str, Any]:
+def sanitize_message(m: Any, seen: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
     out: dict[str, Any] = {"role": m.role, "content": getattr(m, "content", None)}
     calls = getattr(m, "tool_calls", None)
     if calls:
@@ -40,6 +40,12 @@ def sanitize_message(m: Any) -> dict[str, Any]:
         out["id"] = m.id
         out["error"] = m.error
         out["requestor"] = m.requestor
+        entry = (seen or {}).get(m.id)
+        if entry is not None:
+            # what the agent saw (the cut text under C:top3), with the raw length kept apart
+            if entry["text"] is not None:
+                out["content"] = entry["text"]
+            out["raw_chars"] = entry["raw_chars"]
     if getattr(m, "usage", None):
         out["usage"] = m.usage
     if getattr(m, "cost", None) is not None:
@@ -47,13 +53,20 @@ def sanitize_message(m: Any) -> dict[str, Any]:
     return out
 
 
-def sanitize_simulation(sim: SimulationRun) -> dict[str, Any]:
-    return {
+def sanitize_simulation(
+    sim: SimulationRun, seen: dict[str, dict[str, Any]] | None = None
+) -> dict[str, Any]:
+    """`seen` (from the run context) makes the trace show the tool results as the agent saw
+    them; the trace is then marked `seen_in_context`. Without it tau2's raw results are kept."""
+    out = {
         "task_id": sim.task_id,
         "termination_reason": str(getattr(sim.termination_reason, "value", sim.termination_reason)),
         "reward": sim.reward_info.reward if sim.reward_info else None,
-        "messages": [sanitize_message(m) for m in sim.messages],
+        "messages": [sanitize_message(m, seen) for m in sim.messages],
     }
+    if seen is not None:
+        out["seen_in_context"] = True
+    return out
 
 
 def find_banned(obj: Any, path: str = "") -> list[str]:

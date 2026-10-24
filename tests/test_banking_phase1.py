@@ -204,7 +204,8 @@ def test_cap_stops_the_flow_before_the_limit(tmp_path):
 
 def test_agent_searches_cut_results_inside_a_real_banking_run(tmp_path):
     """End to end through tau2's orchestrator with the real KB_search tool: the C:top3 run gets
-    3 items and the trace (written by the orchestrator) still holds the raw 10."""
+    3 items, and since the cut-trace fix the saved trace shows those same 3 items (what the agent
+    saw) with the raw length kept as an extra field (the orchestrator itself still saw all 10)."""
     replies = [
         [thinking(), tool_use("KB_search", query="credit card fees")],
         [thinking(), text("I found the policy.")],
@@ -220,8 +221,11 @@ def test_agent_searches_cut_results_inside_a_real_banking_run(tmp_path):
     assert (s["retrieval_results"], s["cut_results"], s["cut_items_omitted"]) == (1, 1, 7)
     assert s["retrieval_chars_in_context"] < s["retrieval_chars_raw"] and s["cut_unparsed"] == 0
     trace = json.loads((tmp_path / "tr" / run_name(SONNET, "C:top3", task.id, 1)).read_text())
-    raw = next(m["content"] for m in trace["messages"] if m["role"] == "tool")
-    assert raw.count("\n   ID: ") == 10  # the orchestrator saw all 10
+    tool_msg = next(m for m in trace["messages"] if m["role"] == "tool")
+    assert trace["seen_in_context"] is True
+    assert tool_msg["content"] == sent  # the trace holds the text the agent saw
+    assert tool_msg["content"].count("\n   ID: ") == 3 and tool_msg["raw_chars"] > len(sent)
+    assert tool_msg["raw_chars"] == s["retrieval_chars_raw"]
 
 
 # -- the budget request --------------------------------------------------------------------------
