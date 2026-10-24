@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import threading
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -26,10 +27,13 @@ class BudgetExceeded(RuntimeError):
     pass
 
 
+Phase = int | str  # test 1 uses 1, 2, 3; test 2 uses "b1", "b2", "b3" (its own `spend2` branch)
+
+
 @dataclass
 class Prior:
     total: float = 0.0
-    by_phase: dict[int, float] = field(default_factory=dict)
+    by_phase: dict[Phase, float] = field(default_factory=dict)
 
 
 def read_prior(spend_dir: Path, exclude: str | None = None) -> Prior:
@@ -61,23 +65,37 @@ def read_prior(spend_dir: Path, exclude: str | None = None) -> Prior:
     return prior
 
 
-def write_start(spend_dir: Path, dispatch_id: str, phase: int, cap: float) -> None:
+def write_start(spend_dir: Path, dispatch_id: str, phase: Phase, cap: float) -> None:
     Path(spend_dir).mkdir(parents=True, exist_ok=True)
     (Path(spend_dir) / f"start-{dispatch_id}.json").write_text(
         json.dumps({"phase": phase, "cap": cap, "ts": round(time.time())}) + "\n"
     )
 
 
-def plan_dispatch(spend_dir: Path, dispatch_id: str, phase: int) -> float:
-    """Return the cap this dispatch may spend, or raise if the total cap would be passed."""
+def plan_dispatch(
+    spend_dir: Path,
+    dispatch_id: str,
+    phase: Phase,
+    *,
+    phase_caps: Mapping[Phase, float] | None = None,
+    total_cap: float | None = None,
+) -> float:
+    """Return the cap this dispatch may spend, or raise if the total cap would be passed.
+
+    Defaults are test 1's ($27 and its phase caps). Test 2 passes the caps from `budget.json`.
+    """
+    caps = PHASE_CAPS_USD if phase_caps is None else phase_caps
+    total = TOTAL_CAP_USD if total_cap is None else total_cap
+    if phase not in caps:
+        raise BudgetExceeded(f"phase {phase!r} has no cap")
     prior = read_prior(spend_dir, exclude=dispatch_id)
-    remaining_phase = PHASE_CAPS_USD[phase] - prior.by_phase.get(phase, 0.0)
+    remaining_phase = caps[phase] - prior.by_phase.get(phase, 0.0)
     if remaining_phase <= 0:
         raise BudgetExceeded(f"phase {phase} cap already used: {prior.by_phase.get(phase)}")
-    if prior.total + remaining_phase > TOTAL_CAP_USD:
+    if prior.total + remaining_phase > total:
         raise BudgetExceeded(
             f"prior spend ${prior.total:.2f} + phase budget ${remaining_phase:.2f} "
-            f"would pass the ${TOTAL_CAP_USD} cap"
+            f"would pass the ${total} cap"
         )
     return remaining_phase
 
@@ -89,7 +107,7 @@ class Ledger:
         self,
         path: Path,
         dispatch_id: str,
-        phase: int,
+        phase: Phase,
         phase_cap: float,
         prior_total: float = 0.0,
         total_cap: float = TOTAL_CAP_USD,

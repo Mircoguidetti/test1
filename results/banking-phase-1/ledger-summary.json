@@ -1,0 +1,18 @@
+{
+ "total": 2.530897,
+ "calls": 338,
+ "by_purpose": {
+  "user_sim": 0.03674,
+  "agent": 2.494157
+ },
+ "by_model": {
+  "claude-haiku-5-5": 0.229712,
+  "claude-sonnet-5-5": 2.301185
+ },
+ "by_config": {
+  "default": 1.557695,
+  "E:low": 0.09475,
+  "C:top3": 0.348267,
+  "EC": 0.530185
+ }
+}

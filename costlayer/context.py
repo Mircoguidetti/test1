@@ -38,6 +38,13 @@ class RunContext:
     thinking_tokens_reported: int = 0
     thinking_reported_calls: int = 0
     agent_error_kind: str | None = None
+    # retrieval results (KB_search, grep) as they enter the conversation (test 2)
+    retrieval_results: int = 0
+    retrieval_chars_raw: int = 0  # what the tool returned
+    retrieval_chars_in: int = 0  # what the agent's conversation got (smaller under C:top3)
+    cut_results: int = 0  # results that were actually cut
+    cut_items_omitted: int = 0
+    cut_unparsed: int = 0  # results that looked like an item list but could not be parsed
 
     def check_abort(self) -> None:
         if self.spent > self.abort_above_usd:

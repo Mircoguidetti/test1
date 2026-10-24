@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10", "pyyaml>=6"]
 
 [tool.uv.sources]
 # tau2-bench (tau^3-bench v1.0.0, MIT license), pinned commit.
@@ -39,3 +39,7 @@ testpaths = ["tests"]
 
 [project.scripts]
 costlayer = "costlayer.cli:main"
+
+[tool.ruff.lint.per-file-ignores]
+# Markdown report text: long string literals are easier to read unwrapped.
+"costlayer/report_banking.py" = ["E501"]
