@@ -244,7 +244,8 @@ def test_the_planner_counts_actual_spend_too():
             ran.append(task.id)
             ledger.spent += 2.0  # each task really costs 2.0
 
-    ledger = SimpleNamespace(phase_cap=7.0, spent=0.0)
+    # the classifier check keeps $0.05 of the cap: 7.05 - 0.05 = 7.0 for the tasks
+    ledger = SimpleNamespace(phase_cap=7.05, spent=0.0)
     basis = B2.CostBasis(mean=dict.fromkeys(CONFIGS, 0.5), high=dict.fromkeys(CONFIGS, 0.5))
     tasks = [(SimpleNamespace(id=f"t{i}"), list(CONFIGS)) for i in range(4)]
     plan = B2.SweepPlan(ids=[t.id for t, _ in tasks], todo=tasks, reused=[])
