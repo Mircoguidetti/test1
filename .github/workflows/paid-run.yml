@@ -17,6 +17,13 @@ on:
       phase1_run_id:
         description: "Phase 2 only: run id of the phase 1 dispatch whose traces are reused"
         default: "39998961720"
+      banking_b1_run_id:
+        description: "Test 2 b2 only: run id of the b1 dispatch whose traces are reused"
+        default: "40019775854"
+      allow_no_reuse:
+        description: "Test 2 b2 only: go on even if the b1 traces could not be downloaded"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -167,24 +174,41 @@ jobs:
             git worktree add --orphan -b spend2 spend-wt
           fi
 
+      - name: Phase number for the folders (b1 -> 1, b2 -> 2)
+        run: echo "N=${PHASE#b}" >> "$GITHUB_ENV"
+
+      - name: Download the b1 traces (b2 reuses those runs)
+        if: inputs.phase == 'b2'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: traces-banking-b1-${{ inputs.banking_b1_run_id }}
+          path: traces/banking-b1-prior
+          run-id: ${{ inputs.banking_b1_run_id }}
+          github-token: ${{ github.token }}
+
       - name: Dry run estimate (no key, no cost)
         run: |
           uv run costlayer banking-dry-run --phase "$PHASE" --founder-go "$FOUNDER_GO" \
-            --budget budget.json --spend-dir spend-wt
+            --budget budget.json --spend-dir spend-wt \
+            --prior-runs results/banking-phase-1/runs --prior-traces traces/banking-b1-prior \
+            ${{ inputs.allow_no_reuse && '--allow-no-reuse' || '' }}
 
       - name: Paid run
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           uv run costlayer banking-phase --phase "$PHASE" --founder-go "$FOUNDER_GO" \
-            --budget budget.json --spend-dir spend-wt --dispatch-id "$DISPATCH_ID"
+            --budget budget.json --spend-dir spend-wt --dispatch-id "$DISPATCH_ID" \
+            --prior-runs results/banking-phase-1/runs --prior-traces traces/banking-b1-prior \
+            ${{ inputs.allow_no_reuse && '--allow-no-reuse' || '' }}
 
       - name: Upload sanitized traces
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: traces-banking-${{ inputs.phase }}-${{ github.run_id }}
-          path: traces/banking-phase-1
+          path: traces/banking-phase-${{ env.N }}
           if-no-files-found: ignore
 
       - name: Commit the ledger to the spend2 branch
@@ -193,7 +217,7 @@ jobs:
           cd spend-wt
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cp "$GITHUB_WORKSPACE/results/banking-phase-1/ledger-summary.json" \
+          cp "$GITHUB_WORKSPACE/results/banking-phase-$N/ledger-summary.json" \
             "ledger-summary-$DISPATCH_ID.json" || true
           git add -A
           git diff --cached --quiet || git commit -m "spend2: dispatch $DISPATCH_ID"
