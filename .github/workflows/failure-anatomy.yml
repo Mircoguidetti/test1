@@ -1,0 +1,75 @@
+name: failure-anatomy
+
+# Free analysis: no API call, no secret (only the automatic GITHUB_TOKEN, read-only), no ledger.
+# It downloads the sanitized trace artifacts of earlier paid runs and writes the report as an
+# artifact of this run. Dispatch only; nothing here can spend money.
+on:
+  workflow_dispatch:
+    inputs:
+      phase1_run_id:
+        description: "Run id of test 1 phase 1 (traces-phase-1-<id>)"
+        default: "39998961720"
+      phase2_run_id:
+        description: "Run id of test 1 phase 2 (traces-phase-2-<id>)"
+        default: "40003551319"
+      b1_run_id:
+        description: "Run id of test 2 b1 (traces-banking-b1-<id>)"
+        default: "40019775854"
+      b2_run_id:
+        description: "Run id of test 2 b2 (traces-banking-b2-<id>)"
+        default: "40076249021"
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: failure-anatomy
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - name: Retail traces, phase 1
+        uses: actions/download-artifact@v4
+        with:
+          name: traces-phase-1-${{ inputs.phase1_run_id }}
+          path: traces/retail-1
+          run-id: ${{ inputs.phase1_run_id }}
+          github-token: ${{ github.token }}
+      - name: Retail traces, phase 2
+        uses: actions/download-artifact@v4
+        with:
+          name: traces-phase-2-${{ inputs.phase2_run_id }}
+          path: traces/retail-2
+          run-id: ${{ inputs.phase2_run_id }}
+          github-token: ${{ github.token }}
+      - name: Banking traces, b1
+        uses: actions/download-artifact@v4
+        with:
+          name: traces-banking-b1-${{ inputs.b1_run_id }}
+          path: traces/banking-1
+          run-id: ${{ inputs.b1_run_id }}
+          github-token: ${{ github.token }}
+      - name: Banking traces, b2
+        uses: actions/download-artifact@v4
+        with:
+          name: traces-banking-b2-${{ inputs.b2_run_id }}
+          path: traces/banking-2
+          run-id: ${{ inputs.b2_run_id }}
+          github-token: ${{ github.token }}
+      - name: Analysis
+        run: >
+          uv run python -m costlayer.optimizer.failure_anatomy
+          --retail-traces traces/retail-2 traces/retail-1
+          --banking-traces traces/banking-2 traces/banking-1
+          --out out/failure-anatomy.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: failure-anatomy-report-${{ github.run_id }}
+          path: out/failure-anatomy.md
