@@ -50,6 +50,7 @@ def dry_run_b2(a: Any, budget: Budget, cap: float) -> int:
     with tempfile.TemporaryDirectory() as td:
         plan = b2.plan_b2(_priors(a), Path(td) / "out", Path(td) / "traces")
     pf = b2.preflight(plan, basis, cap, prior.by_phase.get(a.phase, 0.0), prior.total, budget.total)
+    pf["refuse"] = reuse_refusal(a) + pf["refuse"]
     print(f"DRY RUN test 2, phase {a.phase} (no API call, no cost)")
     print(
         f"  train tasks ({b2.N_TRAIN}, banking_order seed 42, ACTION excluded): "
