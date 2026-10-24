@@ -92,3 +92,12 @@ As in test 1: freeze the policy book before any test run (commit and record the 
 - Anything about other agents, other retrieval variants or other models: this is one benchmark, one variant, Sonnet 5.5, one simulated user.
 
 Say all three in every report.
+
+## Amendment 1 (after phase 1 cost measurement, before any phase 2 data)
+
+Phase 1 measured `c(default)` = $0.45 per run (retail: $0.06), so the minimum design of the plan (20 train and 30 test tasks, four configurations) would need `T_needed` = $81, more than the founder's budget (about $30 to $40 for the test). The coordinator therefore runs phase 2 as a **fail-fast probe**:
+
+- `N_train` = **12** (the minimum of 20 is waived for phase 2 only), four configurations, the same train order (`banking_order(seed=42, exclude=ACTION)`, first 12 ids), reusing phase 1 runs where model, configuration and task match and the run finished. Phase 2 cap (`b2`) $16.10; `budget.json` total $22.00. Never start a task whose complete set of four runs the cap cannot cover.
+- The **gate is unchanged** (optimistic projection: ≤ 0.70 of `default` and ≤ 0.85 of `global*`). Failing it is final: KILL or FEATURE ONLY as written above. With 12 tasks per-type learning is not expected to be reachable; compute it as written anyway.
+- **Phase 3 is sized only after the gate passes**, by the coordinator with the founder, from measured costs; `N_test` stays at least 30. The `Phase 1 step 4` minima are superseded for phase 2 only.
+- **New report requirement (from the phase 1 pattern):** the cheap configurations ended runs early and failed. Every report table that shows cost per configuration must show, beside it, successes, failures, mean LLM calls per run, and the mean number of LLM calls of failed runs; and a line stating whether any saving in a configuration coincides with fewer calls and a lower success rate.
