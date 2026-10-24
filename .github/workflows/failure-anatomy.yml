@@ -1,8 +1,9 @@
 name: failure-anatomy
 
-# Free analysis: no API call, no secret (only the automatic GITHUB_TOKEN, read-only), no ledger.
-# It downloads the sanitized trace artifacts of earlier paid runs and writes the report as an
-# artifact of this run. Dispatch only; nothing here can spend money.
+# Free analysis: no API call, no secret (only the automatic GITHUB_TOKEN), no ledger.
+# It downloads the sanitized trace artifacts of earlier paid runs, writes the report as an artifact
+# of this run, and commits the summary-only report to the branch `analysis-results` (so it can be
+# read without downloading the artifact). Dispatch only; nothing here can spend money.
 on:
   workflow_dispatch:
     inputs:
@@ -20,7 +21,7 @@ on:
         default: "40076249021"
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 concurrency:
@@ -69,6 +70,40 @@ jobs:
           --retail-traces traces/retail-2 traces/retail-1
           --banking-traces traces/banking-2 traces/banking-1
           --out out/failure-anatomy.md
+      - name: Refuse to publish a report that contains a banned key
+        run: |
+          uv run python - <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          from costlayer.optimizer.failure_anatomy import BANNED_KEYS
+
+          text = Path("out/failure-anatomy.md").read_text()
+          hits = [k for k in BANNED_KEYS if re.search(rf"\b{re.escape(k)}\b", text)]
+          if hits:
+              sys.exit(f"refusing to commit: banned keys in the report: {hits}")
+          print("no banned key in the report")
+          PY
+      - name: Commit the report to the analysis-results branch
+        run: |
+          set -euo pipefail
+          cp out/failure-anatomy.md "$RUNNER_TEMP/failure-anatomy-full.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin analysis-results >/dev/null; then
+            git fetch --depth=1 origin analysis-results
+            git checkout -B analysis-results FETCH_HEAD
+          else
+            git checkout --orphan analysis-results
+            git rm -rf -q .
+          fi
+          mkdir -p reports
+          cp "$RUNNER_TEMP/failure-anatomy-full.md" reports/failure-anatomy-full.md
+          git add reports/failure-anatomy-full.md
+          if git diff --cached --quiet; then echo "report unchanged"; exit 0; fi
+          git commit -m "failure-anatomy full report from run ${{ github.run_id }}"
+          git push origin analysis-results
       - uses: actions/upload-artifact@v4
         with:
           name: failure-anatomy-report-${{ github.run_id }}
