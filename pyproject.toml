@@ -43,3 +43,4 @@ costlayer = "costlayer.cli:main"
 [tool.ruff.lint.per-file-ignores]
 # Markdown report text: long string literals are easier to read unwrapped.
 "costlayer/report_banking.py" = ["E501"]
+"costlayer/optimizer/failure_anatomy.py" = ["E501"]
