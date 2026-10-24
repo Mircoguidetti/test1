@@ -1,0 +1,18 @@
+{
+ "KB_search": "READ",
+ "grep": "READ",
+ "transfer_to_human_agents": "GENERIC",
+ "get_current_time": "READ",
+ "get_user_information_by_id": "READ",
+ "get_user_information_by_name": "READ",
+ "get_user_information_by_email": "READ",
+ "change_user_email": "WRITE",
+ "get_referrals_by_user": "READ",
+ "get_credit_card_transactions_by_user": "READ",
+ "get_credit_card_accounts_by_user": "READ",
+ "log_verification": "WRITE",
+ "give_discoverable_user_tool": "GENERIC",
+ "unlock_discoverable_agent_tool": "GENERIC",
+ "call_discoverable_agent_tool": "WRITE",
+ "list_discoverable_agent_tools": "READ"
+}

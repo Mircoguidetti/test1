@@ -1,0 +1,388 @@
+{
+ "n_tasks": 12,
+ "tasks": [
+  "task_002",
+  "task_023",
+  "task_027",
+  "task_039",
+  "task_044",
+  "task_047",
+  "task_056",
+  "task_060",
+  "task_073",
+  "task_077",
+  "task_080",
+  "task_082"
+ ],
+ "anatomy": {
+  "default": {
+   "runs": 12,
+   "mean_agent_cost": 0.4001505,
+   "mean_user_cost": 0.003909083333333333,
+   "calls_per_run": 21.25,
+   "shares": {
+    "cache read": 0.27768910979455164,
+    "cache write": 0.5459177629827963,
+    "uncached input": 0.0002782285107419113,
+    "output": 0.1761148987119103
+   },
+   "output_per_call": 331.63529411764705,
+   "thinking_per_call": 98.72549019607843,
+   "visible_est_per_call": 140.69019607843137
+  },
+  "E:low": {
+   "runs": 12,
+   "mean_agent_cost": 0.25152366666666665,
+   "mean_user_cost": 0.0033665,
+   "calls_per_run": 18.0,
+   "shares": {
+    "cache read": 0.26448510543189613,
+    "cache write": 0.5415948308922064,
+    "uncached input": 0.0003763726876810072,
+    "output": 0.19354369098821653
+   },
+   "output_per_call": 270.4490740740741,
+   "thinking_per_call": 49.23148148148148,
+   "visible_est_per_call": 132.38888888888889
+  },
+  "C:top3": {
+   "runs": 12,
+   "mean_agent_cost": 0.2985913333333333,
+   "mean_user_cost": 0.004573416666666667,
+   "calls_per_run": 25.583333333333332,
+   "shares": {
+    "cache read": 0.30892436442176885,
+    "cache write": 0.4396477849948459,
+    "uncached input": 0.00044095949996309056,
+    "output": 0.25098689108342215
+   },
+   "output_per_call": 292.93485342019545,
+   "thinking_per_call": 87.9185667752443,
+   "visible_est_per_call": 120.89250814332247
+  },
+  "EC": {
+   "runs": 12,
+   "mean_agent_cost": 0.23212275000000002,
+   "mean_user_cost": 0.004556500000000001,
+   "calls_per_run": 25.166666666666668,
+   "shares": {
+    "cache read": 0.3021373957995943,
+    "cache write": 0.443490080574443,
+    "uncached input": 0.0005629203907787609,
+    "output": 0.2538096032351839
+   },
+   "output_per_call": 234.09933774834437,
+   "thinking_per_call": 36.44039735099338,
+   "visible_est_per_call": 118.87086092715232
+  }
+ },
+ "success": {
+  "default": {
+   "successes": 2,
+   "n": 12
+  },
+  "E:low": {
+   "successes": 1,
+   "n": 12,
+   "lost_vs_default": [
+    "task_056",
+    "task_073"
+   ],
+   "won_vs_default": [
+    "task_002"
+   ]
+  },
+  "C:top3": {
+   "successes": 2,
+   "n": 12,
+   "lost_vs_default": [
+    "task_056"
+   ],
+   "won_vs_default": [
+    "task_080"
+   ]
+  },
+  "EC": {
+   "successes": 1,
+   "n": 12,
+   "lost_vs_default": [
+    "task_056",
+    "task_073"
+   ],
+   "won_vs_default": [
+    "task_002"
+   ]
+  }
+ },
+ "failures": {
+  "default": 10,
+  "E:low": 11,
+  "C:top3": 10,
+  "EC": 11
+ },
+ "cost_agent_total": {
+  "default": 4.801806,
+  "E:low": 3.018284,
+  "C:top3": 3.583096,
+  "EC": 2.785473
+ },
+ "acceptable": [
+  "default",
+  "E:low",
+  "C:top3",
+  "EC"
+ ],
+ "global_star": "EC",
+ "cost_ratio_vs_default": {
+  "E:low": [
+   0.6285726662010085,
+   0.537106399268412,
+   0.7064787714579195
+  ],
+  "C:top3": [
+   0.746197576495177,
+   0.6580638448594321,
+   0.827428756230337
+  ],
+  "EC": [
+   0.5800886166579825,
+   0.4948577377343208,
+   0.6667231857658189
+  ]
+ },
+ "types": {
+  "task_002": "none",
+  "task_023": "log_verification",
+  "task_027": "log_verification",
+  "task_039": "log_verification",
+  "task_044": "log_verification",
+  "task_047": "log_verification",
+  "task_056": "log_verification",
+  "task_060": "log_verification",
+  "task_073": "log_verification",
+  "task_077": "log_verification",
+  "task_080": "log_verification",
+  "task_082": "log_verification"
+ },
+ "type_counts": {
+  "none": 1,
+  "log_verification": 11
+ },
+ "per_type_choice": {
+  "log_verification": "C:top3",
+  "none": "default"
+ },
+ "headroom": {
+  "headroom": -0.11961415529786135,
+  "chosen_cost": 3.118655,
+  "global_cost": 2.785473,
+  "chosen_failures": 11,
+  "null_p90": -0.0038539235526604543,
+  "null_mean": -0.08352091188821423,
+  "beats_null": false,
+  "oracle_upper_bound": -0.0841821119788273
+ },
+ "table": {
+  "default": {
+   "runs": 12,
+   "successes": 2,
+   "failures": 10,
+   "mean_agent_cost": 0.4001505,
+   "total_agent_cost": 4.801806,
+   "mean_calls": 21.25,
+   "mean_calls_failed": 21.3
+  },
+  "E:low": {
+   "runs": 12,
+   "successes": 1,
+   "failures": 11,
+   "mean_agent_cost": 0.25152366666666665,
+   "total_agent_cost": 3.018284,
+   "mean_calls": 18.0,
+   "mean_calls_failed": 19.181818181818183
+  },
+  "C:top3": {
+   "runs": 12,
+   "successes": 2,
+   "failures": 10,
+   "mean_agent_cost": 0.2985913333333333,
+   "total_agent_cost": 3.583096,
+   "mean_calls": 25.583333333333332,
+   "mean_calls_failed": 24.0
+  },
+  "EC": {
+   "runs": 12,
+   "successes": 1,
+   "failures": 11,
+   "mean_agent_cost": 0.23212275000000002,
+   "total_agent_cost": 2.785473,
+   "mean_calls": 25.166666666666668,
+   "mean_calls_failed": 25.0
+  }
+ },
+ "savings_flags": [
+  {
+   "config": "E:low",
+   "cheaper": true,
+   "fewer_calls": true,
+   "fewer_successes": true,
+   "coincides": true
+  },
+  {
+   "config": "C:top3",
+   "cheaper": true,
+   "fewer_calls": false,
+   "fewer_successes": false,
+   "coincides": false
+  },
+  {
+   "config": "EC",
+   "cheaper": true,
+   "fewer_calls": false,
+   "fewer_successes": true,
+   "coincides": false
+  }
+ ],
+ "retrieval": {
+  "default": {
+   "results": 10.25,
+   "in_tokens": 52913.380952380954,
+   "raw_tokens": 52913.380952380954
+  },
+  "E:low": {
+   "results": 6.0,
+   "in_tokens": 30971.404761904763,
+   "raw_tokens": 30971.404761904763
+  },
+  "C:top3": {
+   "results": 17.916666666666668,
+   "in_tokens": 28651.64285714286,
+   "raw_tokens": 91397.42857142857
+  },
+  "EC": {
+   "results": 12.833333333333334,
+   "in_tokens": 20615.761904761905,
+   "raw_tokens": 67074.85714285714
+  }
+ },
+ "mining_sources": {
+  "seen": 9,
+  "reconstructed": 3
+ },
+ "chains": {
+  "agent_calls": 302,
+  "removable_calls": 11,
+  "call_share": 0.03642384105960265,
+  "agent_cost": 2.7854738,
+  "removable_cost": 0.029244700000000002,
+  "cost_share": 0.010499003796050784,
+  "top_patterns": [
+   [
+    "KB_search -> get_user_information_by_name+get_current_time",
+    4
+   ],
+   [
+    "KB_search -> get_user_information_by_email+get_current_time",
+    1
+   ],
+   [
+    "KB_search -> grep",
+    1
+   ],
+   [
+    "KB_search -> get_user_information_by_name -> get_current_time+get_credit_card_accounts_by_user",
+    1
+   ],
+   [
+    "KB_search+KB_search -> KB_search",
+    1
+   ]
+  ]
+ },
+ "missing_traces": [],
+ "projection": {
+  "literal": {
+   "cost_default": 4.801806,
+   "cost_global": 2.785473,
+   "chain_cost_share": 0.010499003796050784,
+   "headroom": -0.11961415529786135,
+   "headroom_beats_null": false,
+   "projected": 2.756228308399203,
+   "basis": "chains",
+   "ratio_default": 0.5739982640696445,
+   "ratio_global": 0.9895009962039493,
+   "verdict": "FEATURE ONLY"
+  },
+  "per_type_off": null
+ },
+ "classifier": {
+  "n": 12,
+  "accuracy": 0.75,
+  "labels": [
+   "log_verification",
+   "none"
+  ],
+  "detail": [
+   {
+    "task": "task_002",
+    "label": "none",
+    "pred": "none"
+   },
+   {
+    "task": "task_023",
+    "label": "log_verification",
+    "pred": "none"
+   },
+   {
+    "task": "task_027",
+    "label": "log_verification",
+    "pred": "none"
+   },
+   {
+    "task": "task_039",
+    "label": "log_verification",
+    "pred": "log_verification"
+   },
+   {
+    "task": "task_044",
+    "label": "log_verification",
+    "pred": "log_verification"
+   },
+   {
+    "task": "task_047",
+    "label": "log_verification",
+    "pred": "log_verification"
+   },
+   {
+    "task": "task_056",
+    "label": "log_verification",
+    "pred": "none"
+   },
+   {
+    "task": "task_060",
+    "label": "log_verification",
+    "pred": "log_verification"
+   },
+   {
+    "task": "task_073",
+    "label": "log_verification",
+    "pred": "log_verification"
+   },
+   {
+    "task": "task_077",
+    "label": "log_verification",
+    "pred": "log_verification"
+   },
+   {
+    "task": "task_080",
+    "label": "log_verification",
+    "pred": "log_verification"
+   },
+   {
+    "task": "task_082",
+    "label": "log_verification",
+    "pred": "log_verification"
+   }
+  ]
+ }
+}
