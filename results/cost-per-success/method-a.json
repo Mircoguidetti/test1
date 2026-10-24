@@ -1,0 +1,443 @@
+{
+ "banking": {
+  "acceptable": [
+   "default",
+   "E:low",
+   "C:top3",
+   "EC"
+  ],
+  "chain_share": 0.010499003796050784,
+  "dropped_tasks": [],
+  "files": 48,
+  "global_star_cost": "EC",
+  "global_star_cps": "C:top3",
+  "headroom_cost": {
+   "beats_null": false,
+   "headroom": -0.11961415529786135,
+   "null_mean": -0.08257512278884047,
+   "null_p90": -0.0038539235526604543,
+   "null_undefined": 0
+  },
+  "headroom_cps": {
+   "beats_null": false,
+   "headroom": -1.1157507362348094,
+   "null_mean": -0.9027840399344425,
+   "null_p90": -0.7389302435658995,
+   "null_undefined": 149
+  },
+  "infra_error": [],
+  "intervals": {
+   "C:top3": {
+    "cost_per_run": {
+     "defined": 10000,
+     "high": 0.3643445166666666,
+     "low": 0.23763742499999999,
+     "undefined": 0
+    },
+    "cost_ratio": {
+     "defined": 10000,
+     "high": 0.8281814939232659,
+     "low": 0.6578366533297922,
+     "undefined": 0
+    },
+    "cps": {
+     "defined": 8864,
+     "high": 3.6668909,
+     "low": 0.9766918,
+     "undefined": 1136
+    },
+    "cps_ratio": {
+     "defined": 8074,
+     "high": 1.6401341589749414,
+     "low": 0.3387687984805434,
+     "undefined": 1926
+    },
+    "success_rate": {
+     "defined": 10000,
+     "high": 0.3333333333333333,
+     "low": 0.0,
+     "undefined": 0
+    }
+   },
+   "E:low": {
+    "cost_per_run": {
+     "defined": 10000,
+     "high": 0.30795045,
+     "low": 0.19849655833333332,
+     "undefined": 0
+    },
+    "cost_ratio": {
+     "defined": 10000,
+     "high": 0.7075164226024686,
+     "low": 0.5411048779213327,
+     "undefined": 0
+    },
+    "cps": {
+     "defined": 6514,
+     "high": 3.4765666,
+     "low": 0.99448445,
+     "undefined": 3486
+    },
+    "cps_ratio": {
+     "defined": 5656,
+     "high": 2.0156289185572334,
+     "low": 0.3114633588751584,
+     "undefined": 4344
+    },
+    "success_rate": {
+     "defined": 10000,
+     "high": 0.16666666666666666,
+     "low": 0.0,
+     "undefined": 0
+    }
+   },
+   "EC": {
+    "cost_per_run": {
+     "defined": 10000,
+     "high": 0.28354475833333337,
+     "low": 0.18585426666666668,
+     "undefined": 0
+    },
+    "cost_ratio": {
+     "defined": 10000,
+     "high": 0.6668897314024913,
+     "low": 0.4950171387629974,
+     "undefined": 0
+    },
+    "cps": {
+     "defined": 6514,
+     "high": 3.229233,
+     "low": 1.0203742166666665,
+     "undefined": 3486
+    },
+    "cps_ratio": {
+     "defined": 5656,
+     "high": 1.827103774090458,
+     "low": 0.3093651029084088,
+     "undefined": 4344
+    },
+    "success_rate": {
+     "defined": 10000,
+     "high": 0.16666666666666666,
+     "low": 0.0,
+     "undefined": 0
+    }
+   },
+   "default": {
+    "cost_per_run": {
+     "defined": 10000,
+     "high": 0.45689236666666666,
+     "low": 0.34772664166666667,
+     "undefined": 0
+    },
+    "cps": {
+     "defined": 8849,
+     "high": 4.771083,
+     "low": 1.32112145,
+     "undefined": 1151
+    },
+    "success_rate": {
+     "defined": 10000,
+     "high": 0.3333333333333333,
+     "low": 0.0,
+     "undefined": 0
+    }
+   }
+  },
+  "name": "banking",
+  "other_model_files": 0,
+  "stacked_cps_ratio": 0.7383632453069503,
+  "table": {
+   "C:top3": {
+    "calls_per_failed_run": 24.0,
+    "calls_per_run": 25.583333333333332,
+    "cost": 3.583096,
+    "cost_per_run": 0.2985913333333333,
+    "cost_ratio": 0.746197576495177,
+    "cps": 1.791548,
+    "cps_ratio": 0.746197576495177,
+    "failures": 10,
+    "runs": 12,
+    "success_rate": 0.16666666666666666,
+    "successes": 2
+   },
+   "E:low": {
+    "calls_per_failed_run": 19.181818181818183,
+    "calls_per_run": 18.0,
+    "cost": 3.018284,
+    "cost_per_run": 0.25152366666666665,
+    "cost_ratio": 0.6285726662010085,
+    "cps": 3.018284,
+    "cps_ratio": 1.257145332402017,
+    "failures": 11,
+    "runs": 12,
+    "success_rate": 0.08333333333333333,
+    "successes": 1
+   },
+   "EC": {
+    "calls_per_failed_run": 25.0,
+    "calls_per_run": 25.166666666666668,
+    "cost": 2.785473,
+    "cost_per_run": 0.23212275000000002,
+    "cost_ratio": 0.5800886166579825,
+    "cps": 2.785473,
+    "cps_ratio": 1.160177233315965,
+    "failures": 11,
+    "runs": 12,
+    "success_rate": 0.08333333333333333,
+    "successes": 1
+   },
+   "default": {
+    "calls_per_failed_run": 21.3,
+    "calls_per_run": 21.25,
+    "cost": 4.801806,
+    "cost_per_run": 0.4001505,
+    "cost_ratio": 1.0,
+    "cps": 2.400903,
+    "cps_ratio": 1.0,
+    "failures": 10,
+    "runs": 12,
+    "success_rate": 0.16666666666666666,
+    "successes": 2
+   }
+  },
+  "tasks": [
+   "task_073",
+   "task_077",
+   "task_047",
+   "task_044",
+   "task_027",
+   "task_039",
+   "task_060",
+   "task_082",
+   "task_023",
+   "task_080",
+   "task_056",
+   "task_002"
+  ]
+ },
+ "retail": {
+  "acceptable": [
+   "default",
+   "E:low"
+  ],
+  "chain_share": 0.12555554153548582,
+  "dropped_tasks": [],
+  "files": 84,
+  "global_star_cost": "E:low",
+  "global_star_cps": "E:low",
+  "headroom_cost": {
+   "beats_null": false,
+   "headroom": -0.08461258978062491,
+   "null_mean": -0.07969290238633461,
+   "null_p90": -0.05203911419433234,
+   "null_undefined": 0
+  },
+  "headroom_cps": {
+   "beats_null": false,
+   "headroom": -0.027527716634276223,
+   "null_mean": -0.030333934084064606,
+   "null_p90": 0.0494190860229487,
+   "null_undefined": 0
+  },
+  "infra_error": [],
+  "intervals": {
+   "E:low": {
+    "cost_per_run": {
+     "defined": 10000,
+     "high": 0.05752372857142857,
+     "low": 0.04894618571428572,
+     "undefined": 0
+    },
+    "cost_ratio": {
+     "defined": 10000,
+     "high": 0.9239553054913466,
+     "low": 0.8722454048040076,
+     "undefined": 0
+    },
+    "cps": {
+     "defined": 10000,
+     "high": 0.07105872352941177,
+     "low": 0.05460103184210527,
+     "undefined": 0
+    },
+    "cps_ratio": {
+     "defined": 10000,
+     "high": 1.1239156607420453,
+     "low": 0.9044722915090045,
+     "undefined": 0
+    },
+    "success_rate": {
+     "defined": 10000,
+     "high": 0.9523809523809523,
+     "low": 0.7619047619047619,
+     "undefined": 0
+    }
+   },
+   "E:medium": {
+    "cost_per_run": {
+     "defined": 10000,
+     "high": 0.06032717142857143,
+     "low": 0.052033619047619044,
+     "undefined": 0
+    },
+    "cost_ratio": {
+     "defined": 10000,
+     "high": 0.9714508227857865,
+     "low": 0.9246100969826786,
+     "undefined": 0
+    },
+    "cps": {
+     "defined": 10000,
+     "high": 0.08697800824175823,
+     "low": 0.0637607611111111,
+     "undefined": 0
+    },
+    "cps_ratio": {
+     "defined": 10000,
+     "high": 1.3776365727934257,
+     "low": 1.0491800768546609,
+     "undefined": 0
+    },
+    "success_rate": {
+     "defined": 10000,
+     "high": 0.8571428571428571,
+     "low": 0.6190476190476191,
+     "undefined": 0
+    }
+   },
+   "T:bt": {
+    "cost_per_run": {
+     "defined": 10000,
+     "high": 0.06158265238095238,
+     "low": 0.05332178095238096,
+     "undefined": 0
+    },
+    "cost_ratio": {
+     "defined": 10000,
+     "high": 1.0009162139683514,
+     "low": 0.941142900150106,
+     "undefined": 0
+    },
+    "cps": {
+     "defined": 10000,
+     "high": 0.08290734285714287,
+     "low": 0.06148905894736842,
+     "undefined": 0
+    },
+    "cps_ratio": {
+     "defined": 10000,
+     "high": 1.300551789591646,
+     "low": 1.0205932282518477,
+     "undefined": 0
+    },
+    "success_rate": {
+     "defined": 10000,
+     "high": 0.9047619047619048,
+     "low": 0.7142857142857143,
+     "undefined": 0
+    }
+   },
+   "default": {
+    "cost_per_run": {
+     "defined": 10000,
+     "high": 0.06391635714285714,
+     "low": 0.05461170476190476,
+     "undefined": 0
+    },
+    "cps": {
+     "defined": 10000,
+     "high": 0.0679846097368421,
+     "low": 0.056699923809523815,
+     "undefined": 0
+    },
+    "success_rate": {
+     "defined": 10000,
+     "high": 1.0,
+     "low": 0.9047619047619048,
+     "undefined": 0
+    }
+   }
+  },
+  "name": "retail",
+  "other_model_files": 0,
+  "stacked_cps_ratio": 0.8730709167706132,
+  "table": {
+   "E:low": {
+    "calls_per_failed_run": 9.0,
+    "calls_per_run": 10.238095238095237,
+    "cost": 1.117446,
+    "cost_per_run": 0.053211714285714286,
+    "cost_ratio": 0.8985863167036572,
+    "cps": 0.06208033333333333,
+    "cps_ratio": 0.9984292407818414,
+    "failures": 3,
+    "runs": 21,
+    "success_rate": 0.8571428571428571,
+    "successes": 18
+   },
+   "E:medium": {
+    "calls_per_failed_run": 8.8,
+    "calls_per_run": 10.238095238095237,
+    "cost": 1.178836,
+    "cost_per_run": 0.05613504761904762,
+    "cost_ratio": 0.9479526520634308,
+    "cps": 0.07367725,
+    "cps_ratio": 1.1849408150792886,
+    "failures": 5,
+    "runs": 21,
+    "success_rate": 0.7619047619047619,
+    "successes": 16
+   },
+   "T:bt": {
+    "calls_per_failed_run": 9.0,
+    "calls_per_run": 10.428571428571429,
+    "cost": 1.206213,
+    "cost_per_run": 0.05743871428571429,
+    "cost_ratio": 0.9699676734536331,
+    "cps": 0.07095370588235295,
+    "cps_ratio": 1.1411384393572155,
+    "failures": 4,
+    "runs": 21,
+    "success_rate": 0.8095238095238095,
+    "successes": 17
+   },
+   "default": {
+    "calls_per_failed_run": 7.0,
+    "calls_per_run": 11.047619047619047,
+    "cost": 1.24356,
+    "cost_per_run": 0.05921714285714286,
+    "cost_ratio": 1.0,
+    "cps": 0.062178,
+    "cps_ratio": 1.0,
+    "failures": 1,
+    "runs": 21,
+    "success_rate": 0.9523809523809523,
+    "successes": 20
+   }
+  },
+  "tasks": [
+   "103",
+   "23",
+   "54",
+   "10",
+   "8",
+   "91",
+   "109",
+   "92",
+   "69",
+   "59",
+   "20",
+   "99",
+   "88",
+   "44",
+   "83",
+   "43",
+   "78",
+   "82",
+   "104",
+   "24",
+   "25"
+  ]
+ }
+}
