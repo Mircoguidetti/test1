@@ -714,6 +714,20 @@ def test_section(t: TestResult) -> list[str]:
     return L
 
 
+def answer_lines(results: list[TestResult]) -> list[str]:
+    out = []
+    for r in results:
+        q1 = r.q1_verdict["status"] if r.q1_verdict else "not computed"
+        q2 = r.q2_verdict or "NOT COMPUTED (needs the sanitized traces)"
+        out.append(f"- {r.name}: Q1 = {q1}; Q2 = {q2}; Q3 = informational.")
+    out.append(
+        "- Q1 without traces is an upper bound on the net saving: a run can only be stopped if its "
+        "total cost exceeds the threshold, which the summaries give exactly. A FAIL under the bound "
+        "is therefore a real FAIL; a pass under the bound would need the traces to confirm."
+    )
+    return out
+
+
 def build_report(results: list[TestResult], blocked: list[dict[str, str]]) -> str:
     L = ["# Failure anatomy (free analysis, no API call)", ""]
     L += [
@@ -730,10 +744,16 @@ def build_report(results: list[TestResult], blocked: list[dict[str, str]]) -> st
         "",
     ]
     L += table(
-        ["artifact", "test", "used"],
-        [[b["artifact"], b["test"], b["state"]] for b in blocked],
+        ["artifact", "state"],
+        [[b["artifact"], b["state"]] for b in blocked] or [["(none needed)", "all traces read"]],
     )
-    L += [""]
+    L += [
+        "",
+        "Runs with a usable sanitized trace: "
+        + "; ".join(f"{r.name.split(',')[0]}: {r.n_with_steps} of {r.n_runs}" for r in results)
+        + ".",
+        "",
+    ]
     L += [
         "## Definitions and bars (fixed before looking at any data)",
         "",
@@ -777,12 +797,6 @@ def build_report(results: list[TestResult], blocked: list[dict[str, str]]) -> st
 # -- CLI ---------------------------------------------------------------------------------------------
 
 
-def artifact_state(dirs: list[Path], res: TestResult) -> str:
-    if res.n_with_steps == res.n_runs and res.n_runs:
-        return f"yes, all {res.n_runs} runs"
-    return f"no ({res.n_with_steps} of {res.n_runs} runs have a usable trace)"
-
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--results", type=Path, default=Path("results"))
@@ -810,30 +824,7 @@ def main(argv: list[str] | None = None) -> int:
         orders["banking_sweep"],
         banking=True,
     )
-    names = {
-        "retail": (
-            "Test 1 (retail)",
-            "traces-phase-2-40003551319 (also holds the phase 1 runs it reuses)",
-        ),
-        "banking": (
-            "Test 2 (banking)",
-            "traces-banking-b2-40076249021 (+ traces-banking-b1-40019775854)",
-        ),
-    }
-    blocked = [
-        {
-            "artifact": names["retail"][1],
-            "test": names["retail"][0],
-            "state": artifact_state([], retail),
-        },
-        {
-            "artifact": names["banking"][1],
-            "test": names["banking"][0],
-            "state": artifact_state([], bank),
-        },
-    ]
-    for b in a.blocked:
-        blocked.append({"artifact": b, "test": "-", "state": "download blocked"})
+    blocked = [{"artifact": b, "test": "-", "state": "download blocked"} for b in a.blocked]
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(build_report([retail, bank], blocked) + "\n")
     print(f"wrote {a.out}")
