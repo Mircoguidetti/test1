@@ -55,6 +55,9 @@ class FakeSDK:
             self._seen_prefix = True
         if isinstance(r, BaseException):
             raise r
+        return self._respond(r, first)
+
+    def _respond(self, r, first=False):
         content, stop = r if isinstance(r, tuple) else (r, "end_turn")
         usage = FakeUsage(
             input_tokens=50,
