@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from costlayer import banking_phase1 as bank1
+from costlayer import banking_run2 as run2
 from costlayer import budget as budget_mod
 from costlayer import ledger as ledger_mod
 from costlayer import phase1 as phase1_mod
@@ -212,13 +213,24 @@ def _banking_gate(a: argparse.Namespace) -> tuple[budget_mod.Budget, float]:
         cap = budget_mod.check_may_start(budget, a.phase, a.founder_go)
     except budget_mod.BudgetFileError as e:
         raise SystemExit(f"REFUSED: {e}") from e
-    if a.phase != "b1":
-        raise SystemExit(f"REFUSED: phase {a.phase} is not built yet (test 2 phase 0 builds b1)")
+    if a.phase not in ("b1", "b2"):
+        raise SystemExit(f"REFUSED: phase {a.phase} is not built yet (b1 and b2 are)")
+    _resolve_paths(a)
     return budget, cap
+
+
+def _resolve_paths(a: argparse.Namespace) -> None:
+    """Per-phase defaults for the output folders (b1 keeps its original ones)."""
+    n = a.phase[1:]
+    a.out = a.out or f"results/banking-phase-{n}"
+    a.trace_dir = a.trace_dir or f"traces/banking-phase-{n}"
+    a.report = a.report or f"reports/banking-phase-{n}.md"
 
 
 def cmd_banking_dry_run(a: argparse.Namespace) -> int:
     budget, cap = _banking_gate(a)
+    if a.phase == "b2":
+        return run2.dry_run_b2(a, budget, cap)
     plan = bank1.dry_run_plan()
     spend = Path(a.spend_dir) if a.spend_dir else None
     prior = read_prior(spend) if spend else ledger_mod.Prior()
@@ -252,7 +264,9 @@ def cmd_banking_dry_run(a: argparse.Namespace) -> int:
 
 
 def cmd_banking_phase(a: argparse.Namespace) -> int:
-    budget, _ = _banking_gate(a)
+    budget, cap = _banking_gate(a)
+    if a.phase == "b2":
+        return run2.run_b2(a, budget, cap, _console_note)
     check_data_dir(BANKING_DOMAIN)
     spend = Path(a.spend_dir)
     cap = plan_dispatch(
@@ -343,11 +357,20 @@ def main(argv: list[str] | None = None) -> int:
         sp.add_argument("--budget", default=str(budget_mod.DEFAULT_PATH))
         sp.add_argument("--founder-go", default="", help="b2/b3 only: must equal the phase key")
         sp.add_argument("--spend-dir", required=paid, default="")
+        # b2: the phase 1 runs and traces that may be reused (the artifact is downloaded by the
+        # workflow); the dry run needs them too, so they are not limited to the paid command
+        sp.add_argument("--prior-runs", default="results/banking-phase-1/runs")
+        sp.add_argument("--prior-traces", nargs="*", default=["traces/banking-b1-prior"])
+        sp.add_argument(
+            "--allow-no-reuse",
+            action="store_true",
+            help="b2: go on even if the phase 1 traces are missing (nothing is reused)",
+        )
+        sp.add_argument("--out", default=None, help="default: results/banking-phase-<n>")
+        sp.add_argument("--trace-dir", default=None, help="default: traces/banking-phase-<n>")
+        sp.add_argument("--report", default=None, help="default: reports/banking-phase-<n>.md")
         if paid:
             sp.add_argument("--dispatch-id", required=True)
-            sp.add_argument("--out", default="results/banking-phase-1")
-            sp.add_argument("--trace-dir", default="traces/banking-phase-1")
-            sp.add_argument("--report", default="reports/banking-phase-1.md")
         sp.set_defaults(fn=fn)
         return sp
 

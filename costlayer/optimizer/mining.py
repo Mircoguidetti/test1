@@ -82,7 +82,8 @@ def chain_stats(traces: list[dict[str, Any]], kinds: dict[str, str]) -> dict[str
     patterns: Counter[str] = Counter()
     for tr in traces:
         ts = turns(tr)
-        msgs = [m for m in tr["messages"] if m["role"] == "assistant"]
+        # LLM calls only: the orchestrator's greeting is an assistant message without usage
+        msgs = [m for m in tr["messages"] if m["role"] == "assistant" and m.get("usage")]
         calls += len(msgs)
         cost += sum(m.get("cost") or 0.0 for m in msgs)
         for ch in chains(tr, kinds):

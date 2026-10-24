@@ -139,9 +139,11 @@ class AnthropicAgent(HalfDuplexAgent[AgentState]):
                 return {b["id"]: b["name"] for b in m["content"] if b.get("type") == "tool_use"}
         return {}
 
-    def _tool_result_text(self, ctx: Any, name: str | None, content: str) -> str:
+    def _tool_result_text(self, ctx: Any, name: str | None, content: str, tool_id: str = "") -> str:
         """What enters the conversation for one tool result. Called once per result, at first
-        insertion; the returned string is never rewritten afterwards (cache prefix stays intact)."""
+        insertion; the returned string is never rewritten afterwards (cache prefix stays intact).
+        For retrieval tools the text the agent actually saw is remembered in the run context, so
+        the saved trace can show it (and the raw length) instead of the raw tool output."""
         if name not in CUT_TOOLS:
             return content
         cut = cut_for_tool(name, content, self.policy.cut_top)
@@ -149,8 +151,13 @@ class AnthropicAgent(HalfDuplexAgent[AgentState]):
         ctx.retrieval_chars_raw += len(content)
         if cut is None:
             ctx.retrieval_chars_in += len(content)
+            ctx.seen_results[tool_id] = {"raw_chars": len(content), "text": None}
             return content
         ctx.retrieval_chars_in += len(cut.text)
+        ctx.seen_results[tool_id] = {
+            "raw_chars": len(content),
+            "text": cut.text if cut.text != content else None,
+        }
         ctx.cut_results += 1 if cut.omitted else 0
         ctx.cut_items_omitted += cut.omitted
         ctx.cut_unparsed += 0 if cut.parsed else 1
@@ -167,7 +174,7 @@ class AnthropicAgent(HalfDuplexAgent[AgentState]):
         for tm in tool_msgs:
             content = tm.content or ""
             if content and not tm.error:
-                content = self._tool_result_text(ctx, names.get(tm.id), content)
+                content = self._tool_result_text(ctx, names.get(tm.id), content, tm.id)
             b: dict[str, Any] = {
                 "type": "tool_result",
                 "tool_use_id": tm.id,

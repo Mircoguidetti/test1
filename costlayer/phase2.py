@@ -74,7 +74,12 @@ def reusable(prior: Prior, model: str, config: str, task: str) -> tuple[dict, Pa
 
 
 def plan_sweep(
-    tasks: list[Task], priors: list[Prior], out_dir: Path, trace_dir: Path, model: str = SONNET
+    tasks: list[Task],
+    priors: list[Prior],
+    out_dir: Path,
+    trace_dir: Path,
+    model: str = SONNET,
+    configs: tuple[str, ...] = CONFIG_NAMES,
 ) -> tuple[list[tuple[Task, list[str]]], list[str]]:
     """Copy reusable runs into the phase 2 folders; return what is still to run."""
     (out_dir / "runs").mkdir(parents=True, exist_ok=True)
@@ -83,7 +88,7 @@ def plan_sweep(
     reused: list[str] = []
     for t in tasks:
         todo = []
-        for c in CONFIG_NAMES:
+        for c in configs:
             hit = next((h for p in priors if (h := reusable(p, model, c, t.id))), None)
             if hit is None:
                 todo.append(c)

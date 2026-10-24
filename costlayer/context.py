@@ -45,6 +45,9 @@ class RunContext:
     cut_results: int = 0  # results that were actually cut
     cut_items_omitted: int = 0
     cut_unparsed: int = 0  # results that looked like an item list but could not be parsed
+    # what the agent saw for each retrieval result: tool_use id -> {raw_chars, text}; `text` is the
+    # (cut) string that entered the conversation, or None when it is identical to the raw result
+    seen_results: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def check_abort(self) -> None:
         if self.spent > self.abort_above_usd:

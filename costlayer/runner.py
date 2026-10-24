@@ -161,7 +161,7 @@ class Runner:
                 task,
                 evaluation_type=EvaluationType.ENV,
             )
-            clean = sanitize_simulation(sim)
+            clean = sanitize_simulation(sim, ctx.seen_results if self.domain != DOMAIN else None)
             assert not find_banned(clean), find_banned(clean)
             reward = float(clean["reward"] or 0.0)
             reason = clean["termination_reason"]

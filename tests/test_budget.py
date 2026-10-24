@@ -19,14 +19,16 @@ def write(tmp_path, obj) -> Path:
     return p
 
 
-def test_committed_budget_json_has_only_b1_and_the_phase_1_total():
-    raw = json.loads((ROOT / "budget.json").read_text())
-    assert raw == {"total": 4.0, "phase_caps": {"b1": 4.0}}
+def test_committed_budget_json_is_valid_and_its_values_belong_to_the_coordinator():
+    """budget.json is edited by the coordinator (b2 was added with its own total), so this test
+    checks that the committed file is valid, never its values; a phase without a cap is refused."""
     b = B.load_budget(ROOT / "budget.json")
-    assert b.total == 4.0 and b.cap("b1") == 4.0
-    for missing in ("b2", "b3"):
-        with pytest.raises(B.BudgetFileError, match="no cap"):
-            b.cap(missing)
+    assert b.cap("b1") == 4.0  # the phase 1 cap is fixed in TEST2.md
+    assert sum(b.phase_caps.values()) <= b.total
+    for phase in B.PHASES:
+        if phase not in b.phase_caps:
+            with pytest.raises(B.BudgetFileError, match="no cap"):
+                b.cap(phase)
 
 
 @pytest.mark.parametrize(
@@ -86,8 +88,16 @@ def test_cli_refuses_before_writing_anything(tmp_path, capsys):
     args = ["banking-phase", "--budget", str(full), "--spend-dir", str(spend)]
     with pytest.raises(SystemExit, match="founder's go"):
         cli_main([*args, "--phase", "b2", "--dispatch-id", "x"])
-    with pytest.raises(SystemExit, match="not built yet"):  # guards pass, flow is a later phase
+    # the guards pass, then the pre-flight refuses: the certain part of b2 (about $12.9 without
+    # the b1 traces to reuse) is above this cap of $10; nothing is written
+    with pytest.raises(SystemExit, match="certain part"):
         cli_main([*args, "--phase", "b2", "--founder-go", "b2", "--dispatch-id", "x"])
+    three = write(tmp_path, {"total": 40.0, "phase_caps": {"b1": 4.0, "b2": 10.0, "b3": 12.0}})
+    with pytest.raises(SystemExit, match="not built yet"):  # b3 comes after the gate
+        cli_main(
+            ["banking-phase", "--budget", str(three), "--spend-dir", str(spend), "--phase", "b3",
+             "--founder-go", "b3", "--dispatch-id", "x"]
+        )  # fmt: skip
     with pytest.raises(SystemExit, match="REFUSED"):
         cli_main(
             [
